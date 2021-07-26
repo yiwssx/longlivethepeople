@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>ระบบไว้อาลัยเหตุการณ์โควิด-19</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="assets/img/favicon.ico" type="image/x-icon">
+    <link href="assets/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/css/style.css" rel="stylesheet">
+</head>
+
+<body class="body-home">
+
+    <div class="container mourning-section my-4">
+        <!-- Mourning message emblem-->
+        <div class="row">
+            <div class="col">
+                <button class="btn btn-image" id="send" type="submit" onclick=window.location.reload()></button>
+                <!-- <picture>
+                    <img class="contain" src="/assets/img/chatroombg.png" alt="Government">
+                </picture> -->
+            </div>
+        </div>
+        <!-- Mourning message send-->
+        <div class="row">
+            <div class="col justified">
+                <textarea class="form-control" id="message" cols="30" rows="4" name="mourning message"
+                    placeholder="แสดงความไว้อาลัย" required></textarea>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col justified">
+                <input class="form-control" type="text" id="codename" placeholder="นามแฝง" required>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col justified">
+                <input class="form-control" type="text" id="affiliation" placeholder="สังกัด ไม่บังคับ">
+            </div>
+        </div>
+    </div>
+
+    <div class="container mourning-display p-4 my-4">
+        <!-- Mourning message display -->
+        <div class="row">
+            <div class="col">
+                <table id="messages">
+                    <thead>
+                        <tr>
+                            <th>ผู้ไว้อาลัย</th>
+                            <th>ข้อความไว้อาลัย</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <!-- for military junta -->
+    <footer>
+        <div class="container">
+            <p class="paragraph fxxk-govern text-center">Fuck</p>
+            <p class="paragraph fxxk-govern text-center">Military Government</p>
+        </div>
+    </footer>
+
+    <script src="assets/js/jquery-1.12.4.min.js"></script>
+    <script src="assets/js/jquery-migrate-1.4.1.min.js"></script>
+    <script src="assets/js/socket.io.min.js"></script>
+    <script src="assets/js/bootstrap.min.js"></script>
+    <script src="assets/js/script.js" type="text/javascript"></script>
+
+</body>
+
+</html>
