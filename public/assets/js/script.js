@@ -1,5 +1,4 @@
 const socket = io();
-const url = 'http://localhost:3000/';
 
 function ready(fn) {
     if (document.readyState != 'loading') {
@@ -38,7 +37,7 @@ function addMessages(message) {
 }
 
 function getMessages() {
-    fetch(url + 'messages')
+    fetch('/messages')
         .then(function (response) {
             return response.json();
         })
@@ -48,7 +47,7 @@ function getMessages() {
 }
 
 function sendMessage(data) {
-    fetch(url + 'messages', {
+    fetch('/messages', {
         method: 'POST', // *GET, POST, PUT, DELETE, etc.
         mode: 'cors', // no-cors, *cors, same-origin
         cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
