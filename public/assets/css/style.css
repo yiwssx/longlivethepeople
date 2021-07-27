@@ -3,12 +3,129 @@ html ,body {
     font-family: 'Pridi', serif;
 }
 
-.body-index {
-    background-image: url('../img/background.jpg');
+/* .body-index {
+    background-image: url('data:image/svg+xml,../img/webpage.svg');
     background-repeat: no-repeat;
     background-attachment: fixed;
     background-size: 100% 100%;
+} */
+
+.body-index {
+    justify-content: center;
+    align-items: center;
+    display: flex;
+    height: 100vh; 
+    background-image: url('../img/webpage.png');
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 100% 100%; 
 }
+
+/* 
+  ##Device = Desktops
+  ##Screen = 1281px to higher resolution desktops
+*/
+
+@media (min-width: 1281px) {
+  
+    .body-index {
+        background-size: contain;
+    }
+    html ,body {
+        background-color: #000000;
+    }
+    
+  }
+  
+  /* 
+    ##Device = Laptops, Desktops
+    ##Screen = B/w 1025px to 1280px
+  */
+  
+  @media (min-width: 1025px) and (max-width: 1280px) {
+    
+    .body-index {
+        background-size: contain;
+    }
+    html ,body {
+        background-color: #000000;
+    }
+    
+  }
+  
+  /* 
+    ##Device = Tablets, Ipads (portrait)
+    ##Screen = B/w 768px to 1024px
+  */
+  
+  @media (min-width: 768px) and (max-width: 1024px) {
+    
+    .body-index {
+        background-size: contain;
+    }
+    html ,body {
+        background-color: #000000;
+    }
+    
+  }
+  
+  /* 
+    ##Device = Tablets, Ipads (landscape)
+    ##Screen = B/w 768px to 1024px
+  */
+  
+  @media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+    
+    .body-index {
+        background-size: contain;
+    }
+    html ,body {
+        background-color: #000000;
+    }
+    
+  }
+  
+  /* 
+    ##Device = Low Resolution Tablets, Mobiles (Landscape)
+    ##Screen = B/w 481px to 767px
+  */
+  
+  @media (min-width: 481px) and (max-width: 767px) {
+    
+    .body-index {
+        background-size: contain;
+    }
+    html ,body {
+        background-color: #000000;
+    }
+    
+  }
+  
+  /* 
+    ##Device = Most of the Smartphones Mobiles (Portrait)
+    ##Screen = B/w 320px to 479px
+  */
+  
+  @media (min-width: 320px) and (max-width: 480px) {
+    
+    .body-index {
+        background-size: contain;
+    }
+    html ,body {
+        background-color: #000000;
+    }
+    
+  }
+
+  @media (max-height: 500) {
+    .body-index {
+        background-size: contain;
+    }
+    html ,body {
+        background-color: #000000;
+    }
+    
+  }
 
 .btn-wrap-text {
     white-space: normal !important;
@@ -26,11 +143,14 @@ p.fxxk-govern {
 }
 
 .btn-index {
-    width: 250px;
+    background-color: #8a0303 !important; 
+    height: 70px;
+    width: 300px;
+    color: #FFFFFF;
 }
 
 .mourning-btn-section {
-    top: 80%;
+    top: 85%;
 }    
 /* End /index style */
 
@@ -86,7 +206,7 @@ p.fxxk-govern {
 }
 
 .form-control:focus {
-    border: 1px solid #800000;
+    border: 1px solid #8a0303;
 }
 
 textarea.form-control {
@@ -183,7 +303,7 @@ table th {
     padding-top: 10px;
     padding-bottom: 10px;
     text-align: center;
-    background-color: #800000;
+    background-color: #8a0303;
     color: white; 
     position: sticky;
     top: 0;
