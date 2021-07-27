@@ -20,12 +20,21 @@ function ready(fn) {
 ready(function() {
     document.querySelector('#send').addEventListener('click', () => {
         let codename = document.getElementById("codename").value;
+        let affiliation = document.getElementById("affiliation").value;
         let umessage = document.getElementById("message").value;
         sendMessage({
-            name: codename,
+            codename: codename,
+            affiliation: affiliation,
             message: umessage
         });
-        getMessages();
+        swal.fire({
+            title: 'Success!',
+            text: 'ส่งข้อความเรียบร้อย',
+            icon: 'success',
+            confirmButtonText: 'ปิดหน้าต่าง'
+          }).then(function() {
+            location.reload();
+          });      
     });
 });
 
@@ -33,7 +42,7 @@ ready(getMessages());
 socket.on('message', addMessages);
 
 function addMessages(message) {
-    $("#messages>tbody").prepend(`<tr><td>${message.name}</td><td>${message.message}</td></tr>`);
+    $("#messages>tbody").prepend(`<tr><td>${message.codename}::${message.affiliation}</td><td>${message.message}</td></tr>`);
 }
 
 function getMessages() {
@@ -68,10 +77,11 @@ function sendMessage(data) {
 $(document).ready(function () {
     $('button[type="submit"]').attr('disabled', true);
     $('input[type="text"],textarea').on('keyup', function () {
-        var textarea_value = $("#message").val();
-        var text_value = $('input[id="codename"]').val();
+        var codenmae_value = $('input[id="codename"]').val();
+        var affiliation_value = $('input[id="affiliation"]').val();
+        var message_value = $("#message").val();
 
-        if (textarea_value != "" && text_value != "") {
+        if (codenmae_value != "" && affiliation_value != "" && message_value != "") {
             $('button[type="submit"]').attr('disabled', false);
         } else {
             $('button[type="submit"]').attr('disabled', true);
