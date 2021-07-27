@@ -21,14 +21,14 @@ const dbURI = config.dbURI || config.dbdevURI;
 const dbOptions = config.dbOptions;
 const CSP = config.CSP;
 
-// HTTP request logger middleware
-if (app.get('env') === 'production') {
-    // create a write stream (in append mode)
-const accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'), { flags: 'a' });
-    app.use(morgan('combined', { stream: accessLogStream }))
-} else {
-    app.use(morgan('dev'));
-}
+// // HTTP request logger middleware
+// if (app.get('env') === 'production') {
+//     // create a write stream (in append mode)
+// const accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'), { flags: 'a' });
+//     app.use(morgan('combined', { stream: accessLogStream }))
+// } else {
+//     app.use(morgan('dev'));
+// }
 
 // set security HTTP headers
 app.use(helmet());
@@ -91,19 +91,21 @@ app.post('/messages', async (req, res) => {
 });
 
 io.on('connection', (socket) => {
-    console.log('a user connected');
+    // console.log('a user connected');
     socket.on('disconnect', () => {
-        console.log('user disconnected');
+        // console.log('user disconnected');
     });
 });
 
 mongoose.connect(dbURI, dbOptions)
     .then(() => {
-        console.log('MongoDB connected!!');
+        // console.log('MongoDB connected!!');
     }).catch(err => {
         console.log(err);;
     });
 
-server.listen(port, () => {
-    console.log(`listening on localhost:${port}`);
-});
+// server.listen(port, () => {
+//     console.log(`listening on localhost:${port}`);
+// });
+
+server.listen(port);
