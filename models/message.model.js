@@ -3,7 +3,8 @@ const Schema = mongoose.Schema;
 
 const mSchema = new Schema(
     {
-       name : {type : String, required : true},
+       codename : {type : String, required : true},
+       affiliation : {type : String, requied : true},
        message : {type : String, required : true}
     },
     {
