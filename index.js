@@ -12,18 +12,14 @@ const io = new Server(server);
 const mongoose = require('mongoose');
 const path = require('path');
 const fs = require('fs');
-const morgan = require('morgan')
+const morgan = require('morgan');
+const config = require('./config/config');
 const Message = require('./models/message.model');
 
 const port = process.env.PORT || 3000;
-const dbdevUri = 'mongodb://localhost:27017/test';
-const dbUrl = process.env.MONGODB_URI || dbdevUri;
-const dbOptions = {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    useCreateIndex: true,
-    useFindAndModify: false
-};
+const dbURI = config.dbURI || config.dbdevURI;
+const dbOptions = config.dbOptions;
+const CSP = config.CSP;
 
 // HTTP request logger middleware
 if (app.get('env') === 'production') {
@@ -36,22 +32,7 @@ const accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'),
 
 // set security HTTP headers
 app.use(helmet());
-app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: ["'self'","'unsafe-inline'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-            imgSrc: ["'self'"],
-            connectSrc: ["'self'"],
-            fontSrc: ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
-            objectSrc: ["'self'"],
-            mediaSrc: ["'self'"],
-            frameSrc: ["'self'"]
-        }
-    }
-})
-);
+app.use(helmet(CSP));
 
 // parse json request body
 app.use(express.json());
@@ -116,7 +97,7 @@ io.on('connection', (socket) => {
     });
 });
 
-mongoose.connect(dbUrl, dbOptions)
+mongoose.connect(dbURI, dbOptions)
     .then(() => {
         console.log('MongoDB connected!!');
     }).catch(err => {
