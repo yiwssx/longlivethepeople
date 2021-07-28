@@ -15,6 +15,7 @@ const fs = require('fs');
 const morgan = require('morgan');
 const config = require('./config/config');
 const Message = require('./models/message.model');
+const { db } = require('./models/message.model');
 
 const port = process.env.PORT || 3000;
 const dbURI = config.dbURI || config.dbdevURI;
@@ -61,9 +62,15 @@ app.get('/home', function (req, res) {
     res.sendFile('/public/home.html', { root: __dirname });
 });
 
+let needdoc = 0; //document to show for reduce webloading
+
 app.get('/messages', async (req, res) => {
     try {
-        let data = await Message.find({});
+        let countdoc = await Message.countDocuments({});
+        if (countdoc >= 100 ) {
+            needdoc = countdoc - 50;
+        }
+        let data = await Message.find().skip(needdoc);
         res.status(200).send(data);
     } catch (err) {
         console.log(err);
