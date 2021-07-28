@@ -15,7 +15,7 @@ const fs = require('fs');
 const morgan = require('morgan');
 const config = require('./config/config');
 const Message = require('./models/message.model');
-const { db } = require('./models/message.model');
+const User = require('./models/user.model');
 
 const port = process.env.PORT || 3000;
 const dbURI = config.dbURI || config.dbdevURI;
@@ -97,7 +97,21 @@ app.post('/messages', async (req, res) => {
     }
 });
 
+async function userCounter(userIpaddr) {
+    try {
+        let result = await User.find({ipaddr : userIpaddr});
+        if (result.length === 0) {
+            let user = new User({ipaddr: userIpaddr});
+            await user.save();
+        } 
+    } catch (err) {
+        console.log(err);
+    } 
+}
+
 io.on('connection', (socket) => {
+    let userIpaddr = socket.handshake.address;
+    userCounter(userIpaddr);
     // console.log('a user connected');
     socket.on('disconnect', () => {
         // console.log('user disconnected');
