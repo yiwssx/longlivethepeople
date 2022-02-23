@@ -1,24 +1,24 @@
 module.exports = {
-    dbdevURI: 'mongodb://localhost:27017/test',
-    dbURI: process.env.MONGODB_URI,
-    dbOptions: {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        useCreateIndex: true,
-        useFindAndModify: false
+    MONGODB_URI: 'mongodb://localhost:27017/test' || process.env.MONGODB_URI,
+    MONGODB_Options: {
+        // useNewUrlParser: true,
+        // useUnifiedTopology: true,
+        // useCreateIndex: true,
+        // useFindAndModify: false
     },
-    CSP: {
+    CSP_RULE: {
         contentSecurityPolicy: {
             directives: {
-                defaultSrc: ["'self'"],
-                scriptSrc: ["'self'"],
-                styleSrc: ["'self'", "https://fonts.googleapis.com"],
-                imgSrc: ["'self'"],
                 connectSrc: ["'self'"],
+                defaultSrc: ["'self'"],
                 fontSrc: ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
-                objectSrc: ["'self'"],
+                imgSrc: ["'self'"],
+                objectSrc: ["'none'"],
+                scriptSrc: ["'self'", "https://cdn.jsdelivr.net"],
+                styleSrc: ["'self'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net"],
+                frameSrc: ["'self'"],
                 mediaSrc: ["'self'"],
-                frameSrc: ["'self'"]
+                
             }
         }
     }
