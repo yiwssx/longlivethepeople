@@ -1,1 +1,1 @@
-# mourn-for-covid19
+# Long Live the People
