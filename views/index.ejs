@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <%- include('./partials/metadata'); %> 
+</head>
+
+<body>
+    <div class="container">
+        <div class="background">
+            <img class="longlivethepeople" src="assets/img/longlivethepeople.jpg" alt="Long Live the People" />
+        </div>
+
+        <div class="mourning-section my-4">
+            <!-- Mourning message send-->
+            <form>
+                <div class="col justified">
+                    <textarea class="form-control" id="message" name="message" cols="30" rows="4"
+                        placeholder="ข้อความแสดงความไว้อาลัย" required></textarea>
+                </div>
+
+                <div class="col justified">
+                    <input class="form-control" type="text" id="codename" name="codename" placeholder="นามแฝง" required />
+                </div>
+
+                <div class="col justified">
+                    <input class="form-control" type="text" id="affiliation" name="affiliation" placeholder="สังกัด" required />
+                </div>
+
+                <div class="col justified">
+                    <button class="btn btn-submit" id="send" type="submit">
+                        ไว้อาลัย
+                    </button>
+                </div> 
+            </form>    
+        </div>
+
+        <div class="mourning-display p-4 my-4">
+            <!-- Mourning message display -->
+            <div class="row">
+                <div class="col">
+                    <table id="messages">
+                        <thead>
+                            <tr>
+                                <th scope="col">ผู้ไว้อาลัย::สังกัด</th>
+                                <th scope="col">ข้อความไว้อาลัย</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <!-- for military junta -->
+        <footer>
+            <div class="container">
+                Fuck<br />
+                Military Government
+            </div>
+        </footer>
+    </div>
+    <%- include('./partials/appscript'); %>
+    <script src="/assets/js/script.js"></script>
+</body>
+
+</html>

@@ -4,7 +4,7 @@ const Schema = mongoose.Schema;
 const mSchema = new Schema(
     {
        codename : {type : String, required : true},
-       affiliation : {type : String, requied : true},
+       affiliation : {type : String, required : true},
        message : {type : String, required : true}
     },
     {
