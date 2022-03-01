@@ -18,7 +18,7 @@ module.exports = {
                 styleSrc: ["'self'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net"],
                 frameSrc: ["'self'"],
                 mediaSrc: ["'self'"],
-                
+
             }
         }
     }
