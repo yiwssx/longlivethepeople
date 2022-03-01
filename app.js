@@ -91,12 +91,12 @@ app.use((err, req, res, next) => {
         res.redirect('/');
     } 
     else if(err.status === 500) {
-        // 500 send status
+        // 500 send status code
         res.sendStatus(500);
     } else {
         res.sendStatus(err.status);
     }
-    // render the error page
+    // return the error code
     res.status(err.status);
 });
 
