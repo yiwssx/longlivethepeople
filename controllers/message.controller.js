@@ -1,4 +1,5 @@
 const Message = require('../models/message.model');
+const io = require('../services/socketio.service');
 
 const getMessage = async () => {
     let data;
@@ -15,6 +16,7 @@ const postMessage = async (req, res) => {
     try {
         data = new Message(req.body);
         await data.save();
+        io.emitter('message', req.body);
     } catch(error) {
         console.log(error);
     }
