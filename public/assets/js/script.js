@@ -5,6 +5,8 @@ const HEADERS = {
     'Accept': 'application/json'
 };
 
+const socket = io();
+
 if (history.replaceState) {
     history.replaceState(null, null, location.href);
 }
@@ -12,6 +14,7 @@ if (history.replaceState) {
 $(() => {
     
     getMessage();
+    socket.on('message', addMessages);
 
     $('form').attr('autocomplete', () => {
         if($(this).attr('autocomplete')) {
@@ -108,5 +111,5 @@ const sendMessage = async (data) => {
         headers: HEADERS,
         body: JSON.stringify(data)
     })
-    .then(addMessages(data));
+    // .then(addMessages(data));
 };
