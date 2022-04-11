@@ -16,7 +16,7 @@ const postMessage = async (req, res) => {
     try {
         data = new Message(req.body);
         await data.save();
-        io.emitter('message', req.body);
+        io.emit('message', req.body);
     } catch(error) {
         console.log(error);
     }

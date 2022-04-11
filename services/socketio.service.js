@@ -4,18 +4,18 @@ const io = new Server();
 const start = (server) => {
     return io.listen(server)
     .on('connection', (socket) => {
-        console.log('some people connected');
+        console.log('some people connected!');
         socket.on('disconnect', () => {
-          console.log('some people disconnected');
+          console.log('some people disconnected!');
         });
       });
 }
 
-const emitter = (event, args) => {
+const emit = (event, args) => {
     if(event === undefined && args === undefined) {
         return false;
     }
     return io.emit(event, args);
 } 
 
-module.exports = {start, emitter};
+module.exports = {start, emit};

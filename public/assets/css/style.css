@@ -121,20 +121,16 @@ html, body {
     height: 100%;
 }
 
-.mourning-section,
-.mourning-display {
-    border-radius: 10px;
-    padding: 0 0 0 0;
-}
-
 .mourning-section {
-    margin: 0;
+    margin: 24px 28px 24px 28px;
+    padding: 10px 0 10px 0;
+    border-radius: 10px;
     background-color: #FFFFFF;
 }
 
 .mourning-display {
+    margin: 0 28px 0 28px;
     max-height: 350px;
-    background-color: #000000;
 }
 
 .form-control {
@@ -209,13 +205,12 @@ table thead th:last-child {
 
 table tbody {
     display: block;
-    max-height: 300px;
+    max-height: 320px;
     overflow-y: scroll;
     border-radius: 0 0 10px 10px;
 }
 
 table th {
-    padding: 10px 0 10px 0;
     text-align: center;
     background-color: #8a0303;
     color: white;
@@ -231,7 +226,7 @@ table td, table th {
 }
 
 table thead, table tbody tr {
-    border: 1px solid;
+    border: 1px solid #000000;
     display: table;
     width: 100%;
     table-layout: fixed;
@@ -269,7 +264,7 @@ footer {
     text-align: center;
     color: #FFFFFF;
     font-weight: bold;
-    margin: 0 0 24px 0;
+    margin: 24px 0 24px 0;
 }
 
 /* End /home style */
