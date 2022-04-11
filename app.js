@@ -38,7 +38,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // app sessions
 app.use(sessions({
-    secret: "longlivethepeople",
+    secret: 'longlivethepeople',
     saveUninitialized: true,
     cookie: { maxAge: 1000 * 60 * 60 * 6 }, //six hours
     resave: false
