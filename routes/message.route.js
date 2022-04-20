@@ -14,7 +14,6 @@ router.get('/messages', async (req, res) => {
     } catch(error) {
         console.log(error.message);
     }
-    return;
 });
 
 router.post('/messages', async (req, res) => {
@@ -23,14 +22,13 @@ router.post('/messages', async (req, res) => {
         let affiliation = req.body.affiliation;
         let message = req.body.codename;
         if (codename.length === 0 || affiliation.length === 0 || message.length === 0) {
-            res.sendStatus(400);
+            return res.sendStatus(400);
         } else {
             return await controllers.postMessage(req, res);
         }
     } catch(error) {
         console.log(error.message);
     }
-    return;
 });
 
 module.exports = router;

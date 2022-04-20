@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-router.get('/', function (req, res) {
+router.get('/', (req, res) => {
     let session = req.session;
     if (session.people) {
         res.render('index');
@@ -10,7 +10,7 @@ router.get('/', function (req, res) {
     }
 });
 
-router.post('/', function (req, res) {
+router.post('/', (req, res) => {
     let session = '';
     if (req.body.people === 'thepeople') {
         session = req.session;
