@@ -20,7 +20,7 @@ router.post('/messages', async (req, res) => {
     try {
         let codename = req.body.codename;
         let affiliation = req.body.affiliation;
-        let message = req.body.codename;
+        let message = req.body.message;
         if (codename.length === 0 || affiliation.length === 0 || message.length === 0) {
             return res.sendStatus(400);
         } else {
