@@ -22,7 +22,7 @@ router.get('/messages', async (req, res) => {
 router.post('/messages', async (req, res) => {
     try {
         const { codename, affiliation, message } = req.body;
-        if (!codename || !affiliation || !message) {
+        if (![codename, affiliation, message].every((value) => typeof value === 'string' && value.trim())) {
             return res.sendStatus(400);
         }
 
