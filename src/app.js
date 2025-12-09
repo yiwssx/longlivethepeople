@@ -18,8 +18,12 @@ const indexRoutes = require('./routes/index.route');
 const messageRoutes = require('./routes/message.route');
 
 const app = express();
+const isProduction = config.env === 'production';
+const isTest = config.env === 'test';
 
-app.use(logger(config.env === 'production' ? 'combined' : 'dev'));
+if (!isTest) {
+    app.use(logger(isProduction ? 'combined' : 'dev'));
+}
 app.use(helmet(config.cspRule));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -32,8 +36,10 @@ app.use(sessions({
 }));
 app.use(xss());
 app.use(mongoSanitize());
-app.use(compression());
-app.use(minify());
+if (isProduction) {
+    app.use(compression());
+    app.use(minify());
+}
 app.use(cors());
 app.options('*', cors());
 
