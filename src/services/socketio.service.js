@@ -1,21 +1,26 @@
 const { Server } = require('socket.io');
-const io = new Server();
+
+let io;
 
 const start = (server) => {
-    return io.listen(server)
-    .on('connection', (socket) => {
+    io = new Server(server);
+
+    io.on('connection', (socket) => {
         console.log('some people connected!');
         socket.on('disconnect', () => {
-          console.log('some people disconnected!');
+            console.log('some people disconnected!');
         });
-      });
-}
+    });
+
+    return io;
+};
 
 const emit = (event, args) => {
-    if(event === undefined && args === undefined) {
+    if (!event || !io) {
         return false;
     }
-    return io.emit(event, args);
-} 
 
-module.exports = {start, emit};
+    return io.emit(event, args);
+};
+
+module.exports = { start, emit };
