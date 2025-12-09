@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+// Server bootstrap script responsible for starting the HTTP server
 const http = require('http');
 const debug = require('debug')('longlivethepeople:server');
 
@@ -7,6 +8,7 @@ const app = require('./app');
 const config = require('./config/config');
 const io = require('./services/socketio.service');
 
+// Normalize the port and configure the Express app to use it
 const port = normalizePort(config.port);
 app.set('port', port);
 
@@ -17,6 +19,7 @@ server.listen(port);
 server.on('error', onError);
 server.on('listening', onListening);
 
+// Ensure ports passed in via environment or string values are valid numbers
 function normalizePort(val) {
     const normalizedPort = parseInt(val, 10);
 
@@ -31,6 +34,7 @@ function normalizePort(val) {
     return false;
 }
 
+// Provide friendly logging and exits for common server startup errors
 function onError(error) {
     if (error.syscall !== 'listen') {
         throw error;
@@ -54,6 +58,7 @@ function onError(error) {
     }
 }
 
+// Log out the bound address once the server is ready to receive traffic
 function onListening() {
     const addr = server.address();
     const bind = typeof addr === 'string'
