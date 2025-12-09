@@ -16,13 +16,13 @@ const config = {
     cspRule: {
         contentSecurityPolicy: {
             directives: {
-                connectSrc: ["'self'"],
+                connectSrc: ["'self'", 'https://cdn.jsdelivr.net'],
                 defaultSrc: ["'self'"],
                 fontSrc: ["'self'", 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
                 imgSrc: ["'self'"],
                 objectSrc: ["'none'"],
                 scriptSrc: ["'self'", 'https://cdn.jsdelivr.net'],
-                styleSrc: ["'self'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'],
+                styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'],
                 frameSrc: ["'self'"],
                 mediaSrc: ["'self'"],
             },
