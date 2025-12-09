@@ -1,12 +1,19 @@
 const Message = require('../models/message.model');
 const io = require('../services/socketio.service');
 
+const MESSAGE_FIELDS = ['codename', 'affiliation', 'message'];
+
+const toSanitizedMessage = (message) =>
+    MESSAGE_FIELDS.reduce((acc, field) => {
+        acc[field] = message[field];
+        return acc;
+    }, {});
+
 const getMessage = async () => {
-    const data = await Message.find({})
-        .select(['codename', 'affiliation', 'message', '-_id'])
+    return Message.find({})
+        .select([...MESSAGE_FIELDS, '-_id'])
         .sort({ createdAt: -1 })
         .lean();
-    return data;
 };
 
 const postMessage = async (req, res) => {
@@ -19,9 +26,11 @@ const postMessage = async (req, res) => {
         };
 
         const data = new Message(payload);
-        await data.save();
-        io.emit('message', payload);
-        return res.status(201).json(data);
+        const saved = await data.save();
+        const sanitized = toSanitizedMessage(saved);
+
+        io.emit('message', sanitized);
+        return res.status(201).json(sanitized);
     } catch (error) {
         console.error(error);
         return res.sendStatus(500);
