@@ -1,3 +1,4 @@
+// Centralized configuration object that reads from environment variables
 const DEFAULT_MONGODB_URI = 'mongodb://localhost:27017/test';
 
 const config = {
@@ -11,6 +12,7 @@ const config = {
         uri: process.env.MONGODB_URI || DEFAULT_MONGODB_URI,
         options: {},
     },
+    // Explicit content security policy that limits external resources
     cspRule: {
         contentSecurityPolicy: {
             directives: {
