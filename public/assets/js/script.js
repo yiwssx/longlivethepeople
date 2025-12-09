@@ -92,8 +92,15 @@ const triggerWarning = () => {
     })
 };
 
+const renderMessage = (message) => `<tr><td>${message.codename}::${message.affiliation}</td><td>${message.message}</td></tr>`;
+
 const addMessages = (message) => {
-    $('#messages>tbody').prepend(`<tr><td>${message.codename}::${message.affiliation}</td><td>${message.message}</td></tr>`);
+    $('#messages>tbody').prepend(renderMessage(message));
+};
+
+const renderHistory = (messages) => {
+    const rows = messages.map(renderMessage).join('');
+    $('#messages>tbody').append(rows);
 };
 
 const getMessage = () => {
@@ -102,7 +109,7 @@ const getMessage = () => {
         headers: HEADERS, 
     })
     .then((response) => response.json())
-    .then((data) => data.forEach(addMessages))
+    .then((data) => renderHistory(data))
 };
 
 const sendMessage = async (data) => {
