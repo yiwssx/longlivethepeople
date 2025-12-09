@@ -1,7 +1,9 @@
+// Socket.IO wrapper that starts the server and exposes an emit helper
 const { Server } = require('socket.io');
 
 let io;
 
+// Initialize Socket.IO on the provided HTTP server
 const start = (server) => {
     io = new Server(server);
 
@@ -15,6 +17,7 @@ const start = (server) => {
     return io;
 };
 
+// Emit events only when a server instance exists and an event name is provided
 const emit = (event, args) => {
     if (!event || !io) {
         return false;

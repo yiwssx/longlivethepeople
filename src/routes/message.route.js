@@ -1,9 +1,11 @@
+// API routes responsible for retrieving and posting encrypted messages
 const express = require('express');
 
 const controllers = require('../controllers/message.controller');
 
 const router = express.Router();
 
+// Retrieve messages in reverse chronological order
 router.get('/messages', async (req, res) => {
     try {
         const result = await controllers.getMessage();
@@ -19,6 +21,7 @@ router.get('/messages', async (req, res) => {
     }
 });
 
+// Validate and store new messages coming from clients
 router.post('/messages', async (req, res) => {
     try {
         const { codename, affiliation, message } = req.body;

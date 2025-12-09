@@ -1,14 +1,17 @@
+// Controller helpers for working with message documents and broadcasting updates
 const Message = require('../models/message.model');
 const io = require('../services/socketio.service');
 
 const MESSAGE_FIELDS = ['codename', 'affiliation', 'message'];
 
+// Remove database metadata before returning responses to clients
 const toSanitizedMessage = (message) =>
     MESSAGE_FIELDS.reduce((acc, field) => {
         acc[field] = message[field];
         return acc;
     }, {});
 
+// Fetch messages ordered from newest to oldest
 const getMessage = async () => {
     return Message.find({})
         .select([...MESSAGE_FIELDS, '-_id'])
@@ -16,6 +19,7 @@ const getMessage = async () => {
         .lean();
 };
 
+// Persist a new message then notify connected Socket.IO clients
 const postMessage = async (req, res) => {
     try {
         const { codename, affiliation, message } = req.body;
