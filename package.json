@@ -30,8 +30,8 @@
   "nodemonConfig": {
     "exec": "npm run dev",
     "watch": [
-      "./*",
-      "public/*"
+      "src",
+      "public"
     ],
     "ignore": [
       "**/__tests__/**",
@@ -44,7 +44,7 @@
   },
   "scripts": {
     "start": "npm run prod",
-    "server": "node ./bin/www",
+    "server": "node ./src/server.js",
     "dev": "cross-env NODE_ENV=development npm-run-all server",
     "prod": "cross-env NODE_ENV=production npm-run-all server",
     "watch:dev": "nodemon"
