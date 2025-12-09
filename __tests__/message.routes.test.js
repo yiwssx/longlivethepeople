@@ -1,3 +1,4 @@
+// Integration tests that validate the message API endpoints
 const mongoose = require('mongoose');
 const request = require('supertest');
 const { MongoMemoryServer } = require('mongodb-memory-server');

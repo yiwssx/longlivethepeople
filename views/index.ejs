@@ -3,6 +3,7 @@
 
 <head>
     <%- include('./partials/metadata'); %>
+    <!-- Socket.IO client to receive realtime message updates -->
     <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.4.1/dist/socket.io.min.js" integrity="sha256-kHrn25nNNzPPjVZSkwC7nm4sHfxprZoFp/h1YY1koUo=" crossorigin="anonymous"></script>
 </head>
 
@@ -13,7 +14,7 @@
         </div>
 
         <div class="mourning-section">
-            <!-- Mourning message send-->
+            <!-- Form for submitting a new mourning message -->
             <form>
                 <div class="col justified">
                     <textarea class="form-control" id="message" name="message" cols="30" rows="4"
@@ -32,12 +33,12 @@
                     <button class="btn btn-submit" id="send" type="submit">
                         ไว้อาลัย
                     </button>
-                </div> 
-            </form>    
+                </div>
+            </form>
         </div>
 
         <div class="mourning-display">
-            <!-- Mourning message display -->
+            <!-- Table that renders submitted messages via script.js -->
             <div class="row">
                 <div class="col">
                     <table id="messages">
@@ -52,7 +53,7 @@
                 </div>
             </div>
         </div>
-        <!-- for military junta -->
+        <!-- Cathartic footer retained from original design -->
         <footer>
             <div class="container">
                 Fuck<br />

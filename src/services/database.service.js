@@ -1,7 +1,9 @@
+// Database utility functions for establishing and closing MongoDB connections
 const mongoose = require('mongoose');
 
 let listenersRegistered = false;
 
+// Register event listeners only once to avoid duplicate logging
 const registerEvents = () => {
     if (listenersRegistered) {
         return;
@@ -32,11 +34,13 @@ const registerEvents = () => {
     listenersRegistered = true;
 };
 
+// Connect to MongoDB while ensuring event listeners are attached first
 const connect = async (uri, options) => {
     registerEvents();
     return mongoose.connect(uri, options);
 };
 
+// Gracefully close the active MongoDB connection
 const disconnect = async () => mongoose.connection.close();
 
 module.exports = { connect, disconnect };

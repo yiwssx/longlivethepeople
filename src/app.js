@@ -1,3 +1,4 @@
+// Core Express setup and middleware dependencies for the application server
 const path = require('path');
 const express = require('express');
 const createError = require('http-errors');
@@ -21,9 +22,11 @@ const app = express();
 const isProduction = config.env === 'production';
 const isTest = config.env === 'test';
 
+// Only log requests outside of test environments to keep output clean
 if (!isTest) {
     app.use(logger(isProduction ? 'combined' : 'dev'));
 }
+// Security-related middleware to harden the Express app
 app.use(helmet(config.cspRule));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -36,6 +39,7 @@ app.use(sessions({
 }));
 app.use(xss());
 app.use(mongoSanitize());
+// Performance tweaks enabled only in production builds
 if (isProduction) {
     app.use(compression());
     app.use(minify());
@@ -43,19 +47,24 @@ if (isProduction) {
 app.use(cors());
 app.options('*', cors());
 
+// Establish the MongoDB connection before handling requests
 databaseService.connect(config.mongodb.uri, config.mongodb.options)
     .catch((error) => console.error(error));
 
+// Configure the view engine and static asset handling
 app.set('view engine', 'ejs');
 app.set('views', path.resolve(__dirname, '../views'));
 app.use(express.static(path.resolve(__dirname, '../public'), { index: false }));
 app.use(favicon(path.resolve(__dirname, '../public/assets/img/favicon.ico')));
 
+// Register route handlers for web pages and API endpoints
 app.use('/', indexRoutes);
 app.use('/api/v1', messageRoutes);
 
+// Convert unmatched routes to 404 errors for centralized handling
 app.use((req, res, next) => next(createError(404)));
 
+// Centralized error handling with graceful fallbacks for common status codes
 app.use((err, req, res, next) => {
     res.locals.message = err.message;
     res.locals.error = req.app.get('env') === 'development' ? err : {};
