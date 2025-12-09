@@ -1,0 +1,68 @@
+const path = require('path');
+const express = require('express');
+const createError = require('http-errors');
+const compression = require('compression');
+const cookieParser = require('cookie-parser');
+const cors = require('cors');
+const favicon = require('serve-favicon');
+const helmet = require('helmet');
+const logger = require('morgan');
+const mongoSanitize = require('express-mongo-sanitize');
+const minify = require('express-minify');
+const sessions = require('express-session');
+const xss = require('xss-clean');
+
+const config = require('./config/config');
+const databaseService = require('./services/database.service');
+const indexRoutes = require('./routes/index.route');
+const messageRoutes = require('./routes/message.route');
+
+const app = express();
+
+app.use(logger(config.env === 'production' ? 'combined' : 'dev'));
+app.use(helmet(config.cspRule));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+app.use(sessions({
+    secret: config.session.secret,
+    saveUninitialized: false,
+    resave: false,
+    cookie: { maxAge: config.session.maxAgeMs },
+}));
+app.use(xss());
+app.use(mongoSanitize());
+app.use(compression());
+app.use(minify());
+app.use(cors());
+app.options('*', cors());
+
+databaseService.connect(config.mongodb.uri, config.mongodb.options)
+    .catch((error) => console.error(error));
+
+app.set('view engine', 'ejs');
+app.set('views', path.resolve(__dirname, '../views'));
+app.use(express.static(path.resolve(__dirname, '../public'), { index: false }));
+app.use(favicon(path.resolve(__dirname, '../public/assets/img/favicon.ico')));
+
+app.use('/', indexRoutes);
+app.use('/api/v1', messageRoutes);
+
+app.use((req, res, next) => next(createError(404)));
+
+app.use((err, req, res, next) => {
+    res.locals.message = err.message;
+    res.locals.error = req.app.get('env') === 'development' ? err : {};
+
+    if (err.status === 404) {
+        return res.redirect('/');
+    }
+
+    if (err.status === 500) {
+        return res.sendStatus(500);
+    }
+
+    return res.sendStatus(err.status || 500);
+});
+
+module.exports = app;

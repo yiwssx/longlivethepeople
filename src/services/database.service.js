@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const run = async (URI, options) => {
+const registerEvents = () => {
     const server = mongoose.connection;
 
     server.on('connected', () => {
@@ -20,10 +20,13 @@ const run = async (URI, options) => {
     });
 
     server.on('error', (error) => {
-        console.log('ERROR: ' + error);
+        console.log(`ERROR: ${error}`);
     });
-
-    return mongoose.connect(URI, options);;
 };
 
-module.exports = run;
+const connect = async (uri, options) => {
+    registerEvents();
+    return mongoose.connect(uri, options);
+};
+
+module.exports = { connect };
