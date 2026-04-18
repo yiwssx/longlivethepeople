@@ -71,6 +71,21 @@ if (!isTest) {
 }
 // Security-related middleware to harden the Express app
 app.use(helmet(config.cspRule));
+
+// Performance tweaks enabled only in production builds
+if (isProduction) {
+    app.use(compression());
+    app.use(minify());
+}
+app.use(cors());
+
+// Configure the view engine and serve static assets before session storage.
+// Static asset requests should not fail when the session database is unavailable.
+app.set('view engine', 'ejs');
+app.set('views', path.resolve(__dirname, '../views'));
+app.use(express.static(path.resolve(__dirname, '../public'), { index: false }));
+app.use(favicon(path.resolve(__dirname, '../public/assets/img/favicon.ico')));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -81,7 +96,7 @@ const sessionOptions = {
     cookie: { maxAge: config.session.maxAgeMs },
 };
 
-if (!isTest) {
+if (isProduction) {
     sessionOptions.store = MongoStore.create({
         mongoUrl: config.mongodb.uri,
         mongoOptions: config.mongodb.options,
@@ -90,22 +105,14 @@ if (!isTest) {
 
 app.use(sessions(sessionOptions));
 app.use(sanitizeRequest);
-// Performance tweaks enabled only in production builds
-if (isProduction) {
-    app.use(compression());
-    app.use(minify());
-}
-app.use(cors());
 
 // Establish the MongoDB connection before handling requests
 databaseService.connect(config.mongodb.uri, config.mongodb.options)
-    .catch((error) => console.error(error));
-
-// Configure the view engine and static asset handling
-app.set('view engine', 'ejs');
-app.set('views', path.resolve(__dirname, '../views'));
-app.use(express.static(path.resolve(__dirname, '../public'), { index: false }));
-app.use(favicon(path.resolve(__dirname, '../public/assets/img/favicon.ico')));
+    .catch((error) => {
+        if (!isTest) {
+            console.error(error.message);
+        }
+    });
 
 // Register route handlers for web pages and API endpoints
 app.use('/', indexRoutes);
@@ -116,13 +123,14 @@ app.use((req, res, next) => next(createError(404)));
 
 // Centralized error handling with graceful fallbacks for common status codes
 app.use((err, req, res, next) => {
-    console.error(err);
     res.locals.message = err.message;
     res.locals.error = req.app.get('env') === 'development' ? err : {};
 
     if (err.status === 404) {
         return res.redirect('/');
     }
+
+    console.error(err);
 
     if (err.status === 500) {
         return res.sendStatus(500);

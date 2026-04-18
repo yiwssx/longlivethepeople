@@ -3,14 +3,20 @@ const { Server } = require('socket.io');
 
 let io;
 
+const logConnection = (message) => {
+    if (process.env.NODE_ENV !== 'test') {
+        console.log(message);
+    }
+};
+
 // Initialize Socket.IO on the provided HTTP server
 const start = (server) => {
     io = new Server(server);
 
     io.on('connection', (socket) => {
-        console.log('some people connected!');
+        logConnection('some people connected!');
         socket.on('disconnect', () => {
-            console.log('some people disconnected!');
+            logConnection('some people disconnected!');
         });
     });
 

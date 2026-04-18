@@ -89,4 +89,54 @@ describe('message routes', () => {
         expect(response.body[1].codename).toBe(first.codename);
         expect(response.body.every((item) => !Object.prototype.hasOwnProperty.call(item, '_id'))).toBe(true);
     });
+
+    it('returns 204 instead of buffering when the database is disconnected', async () => {
+        await databaseService.disconnect();
+
+        try {
+            const startedAt = Date.now();
+            const response = await request(app).get('/api/v1/messages');
+
+            expect(response.status).toBe(204);
+            expect(Date.now() - startedAt).toBeLessThan(2000);
+        } finally {
+            await databaseService.connect(process.env.MONGODB_URI, {});
+            await mongoose.connection.asPromise();
+        }
+    });
+
+    it('returns 503 instead of buffering submissions when the database is disconnected', async () => {
+        await databaseService.disconnect();
+
+        try {
+            const startedAt = Date.now();
+            const response = await request(app)
+                .post('/api/v1/messages')
+                .send({
+                    codename: 'offline',
+                    affiliation: 'test',
+                    message: 'database unavailable',
+                });
+
+            expect(response.status).toBe(503);
+            expect(Date.now() - startedAt).toBeLessThan(2000);
+        } finally {
+            await databaseService.connect(process.env.MONGODB_URI, {});
+            await mongoose.connection.asPromise();
+        }
+    });
+
+    it('redirects unknown routes without logging a 404 error', async () => {
+        const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+        try {
+            const response = await request(app).get('/missing-route');
+
+            expect(response.status).toBe(302);
+            expect(response.headers.location).toBe('/');
+            expect(consoleError).not.toHaveBeenCalled();
+        } finally {
+            consoleError.mockRestore();
+        }
+    });
 });

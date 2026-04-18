@@ -5,31 +5,46 @@ const HEADERS = {
     'Accept': 'application/json'
 };
 
-const socket = io();
+const socket = typeof io === 'function' ? io() : null;
 
 if (history.replaceState) {
     history.replaceState(null, null, location.href);
 }
 
+const showDialog = (options) => {
+    const dialog = window.Swal || window.swal;
+    if (dialog && typeof dialog.fire === 'function') {
+        return dialog.fire(options);
+    }
+
+    return Promise.resolve({ isConfirmed: true });
+};
+
+const createMessageRow = (message) => {
+    const row = document.createElement('tr');
+    const senderCell = document.createElement('td');
+    const messageCell = document.createElement('td');
+
+    senderCell.textContent = `${message.codename}::${message.affiliation}`;
+    messageCell.textContent = message.message;
+    row.append(senderCell, messageCell);
+
+    return row;
+};
+
 $(() => {
     
     getMessage();
-    socket.on('message', addMessages);
+    if (socket) {
+        socket.on('message', addMessages);
+    }
 
-    $('form').attr('autocomplete', () => {
-        if($(this).attr('autocomplete')) {
-            if($(this).attr('autocomplete').val() !== 'off') {
-                $(this).attr('autocomplete', 'off');
-            }
-        } else {
-            $(this).attr('autocomplete', 'off');
-        }
-    });
+    $('form').attr('autocomplete', 'off');
 
-    $('input').focus(() => {
+    $('input').focus(function () {
         $('form').attr('autocomplete', 'off');
         $('textarea').prop('required', true);
-        if($(this).attr('required') !== true) {
+        if(!$(this).prop('required')) {
             $(this).prop('required', true);
         }
     });
@@ -38,13 +53,11 @@ $(() => {
         $('form').submit((e) => {
             e.preventDefault();
 
-            let codename = $('#codename').val();
-            let affiliation = $('#affiliation').val();
-            let message = $('#message').val();
+            const codename = $('#codename').val().trim();
+            const affiliation = $('#affiliation').val().trim();
+            const message = $('#message').val().trim();
 
-            if(codename.length === 0 && affiliation.length === 0 && message.length === 0) {
-                triggerWarning();
-            } else if(codename.length === 0 || affiliation.length === 0 || message.length === 0) {
+            if(codename.length === 0 || affiliation.length === 0 || message.length === 0) {
                 triggerWarning();
             } else {
                 sendMessage({
@@ -52,7 +65,7 @@ $(() => {
                     affiliation: affiliation,
                     message: message
                 }).then(() => {
-                    swal.fire({
+                    showDialog({
                         title: 'Success!',
                         text: 'ส่งข้อความเรียบร้อย',
                         icon: 'success',
@@ -62,13 +75,15 @@ $(() => {
                         if(result.isConfirmed) {
                             $('form')[0].reset();
                         }
-                    })
-                })
+                    });
+                }).catch(() => {
+                    triggerFailure();
+                });
             }
 
         });
     } catch(error) {
-        swal.fire({
+        showDialog({
             title: 'Fails!',
             text: 'ส่งข้อความไม่สำเร็จ',
             icon: 'error',
@@ -79,7 +94,7 @@ $(() => {
 });
 
 const triggerWarning = () => {
-    swal.fire({
+    showDialog({
         title: 'Warning!',
         text: 'กรุณากรอกข้อมูลให้ครบ',
         icon: 'warning',
@@ -89,17 +104,33 @@ const triggerWarning = () => {
         $('form').attr('autocomplete', 'off');
         $('textarea').prop('required', true);
         $('input').prop('required', true);
-    })
+    });
 };
 
-const renderMessage = (message) => `<tr><td>${message.codename}::${message.affiliation}</td><td>${message.message}</td></tr>`;
+const triggerFailure = () => {
+    showDialog({
+        title: 'Fails!',
+        text: 'ส่งข้อความไม่สำเร็จ',
+        icon: 'error',
+        confirmButtonText: 'ปิดหน้าต่าง',
+        allowOutsideClick: false
+    });
+};
 
 const addMessages = (message) => {
-    $('#messages>tbody').prepend(renderMessage(message));
+    $('#messages>tbody').prepend(createMessageRow(message));
 };
 
 const renderHistory = (messages) => {
-    const rows = messages.map(renderMessage).join('');
+    if(!Array.isArray(messages)) {
+        return;
+    }
+
+    const rows = document.createDocumentFragment();
+    messages.forEach((message) => {
+        rows.appendChild(createMessageRow(message));
+    });
+
     $('#messages>tbody').append(rows);
 };
 
@@ -108,15 +139,33 @@ const getMessage = () => {
         method: 'GET',
         headers: HEADERS, 
     })
-    .then((response) => response.json())
+    .then((response) => {
+        if(response.status === 204) {
+            return [];
+        }
+
+        if(!response.ok) {
+            throw new Error('Unable to fetch messages');
+        }
+
+        return response.json();
+    })
     .then((data) => renderHistory(data))
+    .catch(() => {
+        renderHistory([]);
+    });
 };
 
 const sendMessage = async (data) => {
-    fetch(API_PATH, {
+    const response = await fetch(API_PATH, {
         method: 'POST',
         headers: HEADERS,
         body: JSON.stringify(data)
-    })
-    // .then(addMessages(data));
+    });
+
+    if(!response.ok) {
+        throw new Error('Unable to send message');
+    }
+
+    return response.json();
 };
