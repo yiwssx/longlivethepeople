@@ -13,8 +13,11 @@ const mSchema = new Schema(
     {
         timestamps: true,
         collection: 'messages',
+        bufferCommands: false,
     },
 );
+
+mSchema.index({ createdAt: -1 });
 
 const Message = mongoose.model('Messages', mSchema);
 
