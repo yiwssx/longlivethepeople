@@ -8,7 +8,7 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   test:
@@ -16,10 +16,8 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Checkout security branch
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: agent/ci-security-audit
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -30,23 +28,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Apply non-breaking audit fixes
-        run: npm audit fix
-
       - name: Run tests
         run: npm test
 
       - name: Audit high-severity vulnerabilities
         run: npm audit --audit-level=high
-
-      - name: Commit audited lockfile
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package-lock.json package.json
-          if git diff --cached --quiet; then
-            echo "No dependency changes to commit"
-            exit 0
-          fi
-          git commit -m "Apply npm audit fixes"
-          git push origin HEAD:agent/ci-security-audit
