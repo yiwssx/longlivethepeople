@@ -1,11 +1,9 @@
-// Schema and model definition for storing visitor messages.
 const mongoose = require('mongoose');
 
 const messageLimits = require('../config/message-limits');
 
 const Schema = mongoose.Schema;
 
-// Keep database-level validation aligned with the public API validation.
 const mSchema = new Schema(
     {
         codename: {
@@ -26,6 +24,18 @@ const mSchema = new Schema(
             trim: true,
             maxlength: messageLimits.messageMaxLength,
         },
+        // Archive moderation is deliberately operational rather than user-facing.
+        // Existing rows without this field remain visible; operators can mark a
+        // row hidden directly if the archive ever needs content takedown.
+        status: {
+            type: String,
+            enum: ['published', 'hidden'],
+            default: 'published',
+        },
+        hiddenAt: {
+            type: Date,
+            default: null,
+        },
     },
     {
         timestamps: true,
@@ -34,7 +44,7 @@ const mSchema = new Schema(
     },
 );
 
-mSchema.index({ createdAt: -1 });
+mSchema.index({ status: 1, createdAt: -1, _id: -1 });
 
 const Message = mongoose.model('Messages', mSchema);
 
