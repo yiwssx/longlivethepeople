@@ -1,8 +1,9 @@
-// Integration tests that validate the message API endpoints
+// Integration tests that validate the message API endpoints.
 const mongoose = require('mongoose');
 const request = require('supertest');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
+const messageLimits = require('../src/config/message-limits');
 const Message = require('../src/models/message.model');
 const databaseService = require('../src/services/database.service');
 
@@ -14,7 +15,8 @@ describe('message routes', () => {
         mongo = await MongoMemoryServer.create();
         process.env.MONGODB_URI = mongo.getUri();
         process.env.NODE_ENV = 'test';
-        // App import triggers DB connection using env above
+        process.env.MESSAGE_RATE_LIMIT_MAX = '1000';
+        // App import triggers DB connection using env above.
         // eslint-disable-next-line global-require
         app = require('../src/app');
         await mongoose.connection.asPromise();
@@ -32,6 +34,8 @@ describe('message routes', () => {
     it('returns 204 when there are no messages', async () => {
         const response = await request(app).get('/api/v1/messages');
         expect(response.status).toBe(204);
+        expect(response.headers['x-page']).toBe('1');
+        expect(response.headers['x-limit']).toBe('50');
     });
 
     it('rejects invalid submissions with status 400', async () => {
@@ -48,6 +52,30 @@ describe('message routes', () => {
                 .send(payload);
             expect(response.status).toBe(400);
         }
+    });
+
+    it('rejects fields that exceed configured length limits', async () => {
+        const response = await request(app)
+            .post('/api/v1/messages')
+            .send({
+                codename: 'a'.repeat(messageLimits.codenameMaxLength + 1),
+                affiliation: 'test',
+                message: 'hello',
+            });
+
+        expect(response.status).toBe(400);
+    });
+
+    it('rejects request bodies above the configured parser limit', async () => {
+        const response = await request(app)
+            .post('/api/v1/messages')
+            .send({
+                codename: 'test',
+                affiliation: 'test',
+                message: 'x'.repeat(20 * 1024),
+            });
+
+        expect(response.status).toBe(413);
     });
 
     it('creates a message and trims fields before saving', async () => {
@@ -90,14 +118,63 @@ describe('message routes', () => {
         expect(response.body.every((item) => !Object.prototype.hasOwnProperty.call(item, '_id'))).toBe(true);
     });
 
-    it('returns 204 instead of buffering when the database is disconnected', async () => {
+    it('paginates messages while preserving reverse chronological order', async () => {
+        await Message.create([
+            {
+                codename: 'first',
+                affiliation: 'one',
+                message: 'one',
+                createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            },
+            {
+                codename: 'second',
+                affiliation: 'two',
+                message: 'two',
+                createdAt: new Date('2026-01-02T00:00:00.000Z'),
+            },
+            {
+                codename: 'third',
+                affiliation: 'three',
+                message: 'three',
+                createdAt: new Date('2026-01-03T00:00:00.000Z'),
+            },
+        ]);
+
+        const firstPage = await request(app).get('/api/v1/messages?page=1&limit=2');
+        const secondPage = await request(app).get('/api/v1/messages?page=2&limit=2');
+
+        expect(firstPage.status).toBe(200);
+        expect(firstPage.body.map((item) => item.codename)).toEqual(['third', 'second']);
+        expect(firstPage.headers['x-page']).toBe('1');
+        expect(firstPage.headers['x-limit']).toBe('2');
+
+        expect(secondPage.status).toBe(200);
+        expect(secondPage.body.map((item) => item.codename)).toEqual(['first']);
+        expect(secondPage.headers['x-page']).toBe('2');
+    });
+
+    it('rejects invalid pagination parameters', async () => {
+        const invalidQueries = [
+            '?page=0',
+            '?page=abc',
+            '?limit=0',
+            '?limit=101',
+        ];
+
+        for (const query of invalidQueries) {
+            const response = await request(app).get(`/api/v1/messages${query}`);
+            expect(response.status).toBe(400);
+        }
+    });
+
+    it('returns 503 when the database is disconnected', async () => {
         await databaseService.disconnect();
 
         try {
             const startedAt = Date.now();
             const response = await request(app).get('/api/v1/messages');
 
-            expect(response.status).toBe(204);
+            expect(response.status).toBe(503);
             expect(Date.now() - startedAt).toBeLessThan(2000);
         } finally {
             await databaseService.connect(process.env.MONGODB_URI, {});
