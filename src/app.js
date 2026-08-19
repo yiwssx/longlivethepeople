@@ -67,12 +67,19 @@ app.use((err, req, res, next) => {
     }
 
     if (req.originalUrl.startsWith('/api/')) {
-        const status = err.status || (err.type === 'entity.too.large' ? 413 : 500);
-        const code = err.code
-            || (status === 413 ? 'PAYLOAD_TOO_LARGE' : 'INTERNAL_ERROR');
-        const message = err.expose === false
-            ? undefined
-            : err.message;
+        let status = err.status || 500;
+        let code = err.code || 'INTERNAL_ERROR';
+        let message = err.expose === false ? undefined : err.message;
+
+        if (err.type === 'entity.too.large') {
+            status = 413;
+            code = 'PAYLOAD_TOO_LARGE';
+            message = 'Request body is too large';
+        } else if (err.type === 'entity.parse.failed') {
+            status = 400;
+            code = 'MALFORMED_JSON';
+            message = 'Request body contains malformed JSON';
+        }
 
         return sendApiError(res, {
             status,
