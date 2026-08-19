@@ -25,15 +25,12 @@ const parseOrigins = (value) => {
 };
 
 const parseTrustProxy = (value) => {
-    if (value === undefined) {
-        return isProduction ? 1 : false;
+    if (value === undefined || value === 'false') {
+        return false;
     }
 
     if (value === 'true') {
         return 1;
-    }
-    if (value === 'false') {
-        return false;
     }
 
     const numeric = Number.parseInt(value, 10);
