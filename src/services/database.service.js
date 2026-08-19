@@ -1,4 +1,3 @@
-// Database utility functions for establishing and closing MongoDB connections
 const mongoose = require('mongoose');
 
 let listenersRegistered = false;
@@ -7,45 +6,45 @@ const CONNECTING_STATE = 2;
 
 const shouldLog = () => process.env.NODE_ENV !== 'test';
 
-const logInfo = (message) => {
-    if (shouldLog()) {
-        console.log(message);
+const log = (level, event, extra = {}) => {
+    if (!shouldLog()) {
+        return;
     }
+
+    const entry = { level, event, ...extra };
+    const method = level === 'error' ? 'error' : 'log';
+    console[method](JSON.stringify(entry));
 };
 
-const logError = (message) => {
-    if (shouldLog()) {
-        console.error(message);
-    }
-};
-
-// Register event listeners only once to avoid duplicate logging
 const registerEvents = () => {
     if (listenersRegistered) {
         return;
     }
 
-    const server = mongoose.connection;
-
-    server.on('connected', () => logInfo('Connection Established'));
-
-    server.on('reconnected', () => logInfo('Connection Reestablished'));
-
-    server.on('disconnected', () => logInfo('Connection Disconnected'));
-
-    server.on('close', () => logInfo('Connection Closed'));
-
-    server.on('error', (error) => {
-        logError(`ERROR: ${error}`);
-    });
+    const connection = mongoose.connection;
+    connection.on('connected', () => log('info', 'mongodb_connected'));
+    connection.on('reconnected', () => log('info', 'mongodb_reconnected'));
+    connection.on('disconnected', () => log('info', 'mongodb_disconnected'));
+    connection.on('close', () => log('info', 'mongodb_closed'));
+    connection.on('error', (error) => log('error', 'mongodb_error', { message: error.message }));
 
     listenersRegistered = true;
 };
 
-// Connect to MongoDB while ensuring event listeners are attached first
-const connect = async (uri, options) => {
+const connect = async (uri, options = {}) => {
     registerEvents();
-    return mongoose.connect(uri, options);
+
+    if (mongoose.connection.readyState === CONNECTED_STATE) {
+        return mongoose.connection;
+    }
+
+    if (mongoose.connection.readyState === CONNECTING_STATE) {
+        await mongoose.connection.asPromise();
+        return mongoose.connection;
+    }
+
+    await mongoose.connect(uri, options);
+    return mongoose.connection;
 };
 
 const isConnected = () => mongoose.connection.readyState === CONNECTED_STATE;
@@ -69,7 +68,11 @@ const waitForConnection = async (timeoutMs = 1000) => {
     ]);
 };
 
-// Gracefully close the active MongoDB connection
-const disconnect = async () => mongoose.connection.close();
+const disconnect = async () => {
+    if (mongoose.connection.readyState === 0) {
+        return;
+    }
+    await mongoose.connection.close();
+};
 
 module.exports = { connect, disconnect, isConnected, waitForConnection };
