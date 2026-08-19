@@ -75,6 +75,18 @@ describe('message API', () => {
         expect(response.body.error.code).toBe('JSON_REQUIRED');
     });
 
+    it('normalizes malformed JSON parser failures', async () => {
+        const response = await request(app)
+            .post('/api/v1/messages')
+            .set('Content-Type', 'application/json')
+            .send('{"codename":"broken"');
+
+        expect(response.status).toBe(400);
+        expect(response.body.error.code).toBe('MALFORMED_JSON');
+        expect(response.body.error.message).toBe('Request body contains malformed JSON');
+        expect(response.body.error.requestId).toBeDefined();
+    });
+
     it('rejects fields that exceed configured length limits', async () => {
         const response = await request(app)
             .post('/api/v1/messages')
@@ -97,6 +109,7 @@ describe('message API', () => {
             });
 
         expect(response.status).toBe(413);
+        expect(response.body.error.code).toBe('PAYLOAD_TOO_LARGE');
         expect(response.body.error.requestId).toBeDefined();
     });
 
