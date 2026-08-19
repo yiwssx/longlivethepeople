@@ -1,18 +1,37 @@
-// API routes responsible for retrieving and posting messages.
 const express = require('express');
 
 const config = require('../config/config');
 const controllers = require('../controllers/message.controller');
+const { sendApiError } = require('../http/api-response');
 const { createRateLimit } = require('../middleware/rate-limit');
+const metrics = require('../services/metrics.service');
+const { decodeCursor } = require('../utils/message-cursor');
 
 const router = express.Router();
 
-const messageRateLimit = createRateLimit({
-    windowMs: config.messages.rateLimitWindowMs,
-    max: config.messages.rateLimitMax,
+const onRateLimit = (req, res) => {
+    metrics.increment('rateLimitedTotal');
+    return sendApiError(res, {
+        status: 429,
+        code: 'RATE_LIMITED',
+        message: 'Too many requests; retry after the advertised delay',
+        requestId: req.id,
+    });
+};
+
+const messageReadRateLimit = createRateLimit({
+    windowMs: config.messages.readRateLimitWindowMs,
+    max: config.messages.readRateLimitMax,
+    onLimit: onRateLimit,
 });
 
-const parseIntegerQuery = (value, fallback) => {
+const messageWriteRateLimit = createRateLimit({
+    windowMs: config.messages.rateLimitWindowMs,
+    max: config.messages.rateLimitMax,
+    onLimit: onRateLimit,
+});
+
+const parsePositiveInteger = (value, fallback) => {
     if (value === undefined) {
         return fallback;
     }
@@ -26,24 +45,22 @@ const parseIntegerQuery = (value, fallback) => {
 };
 
 const parsePagination = (query) => {
-    const page = parseIntegerQuery(query.page, 1);
     const defaultLimit = Math.min(config.messages.defaultPageSize, config.messages.maxPageSize);
-    const limit = parseIntegerQuery(query.limit, defaultLimit);
-
-    if (page === null || limit === null || limit > config.messages.maxPageSize) {
+    const limit = parsePositiveInteger(query.limit, defaultLimit);
+    if (limit === null || limit > config.messages.maxPageSize) {
         return null;
     }
 
-    const skip = (page - 1) * limit;
-    if (!Number.isSafeInteger(skip)) {
-        return null;
+    if (query.before === undefined) {
+        return { limit, cursor: null };
     }
 
-    return { page, limit, skip };
+    const cursor = decodeCursor(query.before);
+    return cursor ? { limit, cursor } : null;
 };
 
 const normalizeMessagePayload = (body) => {
-    if (!body || typeof body !== 'object') {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
         return null;
     }
 
@@ -71,46 +88,77 @@ const normalizeMessagePayload = (body) => {
     return payload;
 };
 
-// Retrieve messages in reverse chronological order.
-router.get('/messages', async (req, res) => {
+const handleApiError = (error, req, res) => {
+    if ((error.status || 500) >= 500) {
+        console.error(JSON.stringify({
+            level: 'error',
+            event: 'message_api_error',
+            requestId: req.id,
+            code: error.code || 'INTERNAL_ERROR',
+            message: error.message,
+        }));
+    }
+
+    return sendApiError(res, {
+        status: error.status || 500,
+        code: error.code || 'INTERNAL_ERROR',
+        message: error.expose === false ? undefined : error.message,
+        requestId: req.id,
+    });
+};
+
+router.get('/messages', messageReadRateLimit, async (req, res) => {
     try {
         const pagination = parsePagination(req.query);
         if (!pagination) {
-            return res.sendStatus(400);
+            return sendApiError(res, {
+                status: 400,
+                code: 'INVALID_PAGINATION',
+                message: 'limit or before cursor is invalid',
+                requestId: req.id,
+            });
         }
 
-        const result = await controllers.getMessage(pagination);
-        if (result === null) {
-            return res.sendStatus(503);
-        }
-
-        res.setHeader('X-Page', String(pagination.page));
-        res.setHeader('X-Limit', String(pagination.limit));
-
-        if (result.length === 0) {
-            return res.sendStatus(204);
-        }
-
+        const result = await controllers.getMessages(pagination);
         return res.status(200).json(result);
     } catch (error) {
-        console.error(error.message);
-        return res.sendStatus(500);
+        return handleApiError(error, req, res);
     }
 });
 
-// Validate, rate-limit, and store new messages coming from clients.
-router.post('/messages', messageRateLimit, async (req, res) => {
-    try {
-        const payload = normalizeMessagePayload(req.body);
-        if (!payload) {
-            return res.sendStatus(400);
+router.post(
+    '/messages',
+    messageWriteRateLimit,
+    (req, res, next) => {
+        if (!req.is('application/json')) {
+            return sendApiError(res, {
+                status: 415,
+                code: 'JSON_REQUIRED',
+                message: 'POST /messages accepts application/json only',
+                requestId: req.id,
+            });
         }
+        return next();
+    },
+    express.json({ limit: config.http.bodyLimit }),
+    async (req, res) => {
+        try {
+            const payload = normalizeMessagePayload(req.body);
+            if (!payload) {
+                return sendApiError(res, {
+                    status: 400,
+                    code: 'INVALID_MESSAGE',
+                    message: 'codename, affiliation, and message are required strings within their limits',
+                    requestId: req.id,
+                });
+            }
 
-        return controllers.postMessage(payload, res);
-    } catch (error) {
-        console.error(error.message);
-        return res.sendStatus(500);
-    }
-});
+            const created = await controllers.createMessage(payload);
+            return res.status(201).json(created);
+        } catch (error) {
+            return handleApiError(error, req, res);
+        }
+    },
+);
 
 module.exports = router;

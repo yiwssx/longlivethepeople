@@ -4,17 +4,23 @@
     const API_PATH = '/api/v1/messages';
     const PAGE_LIMIT = 20;
     const TOAST_DURATION_MS = 3200;
+    const HEALING_REFRESH_MS = 30_000;
 
     const state = {
-        page: 0,
+        nextCursor: null,
         hasMore: true,
         loading: false,
-        signatures: new Set(),
+        ids: new Set(),
         toastTimer: null,
+        refreshTimer: null,
     };
 
     const elements = {};
     const socket = typeof io === 'function' ? io() : null;
+    const dateFormatter = new Intl.DateTimeFormat('th-TH', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+    });
 
     const cacheElements = () => {
         elements.form = document.querySelector('#message-form');
@@ -36,22 +42,19 @@
         elements.toast = document.querySelector('#toast');
     };
 
-    const messageSignature = (message) => [
-        message?.codename ?? '',
-        message?.affiliation ?? '',
-        message?.message ?? '',
-    ].join('\u001f');
-
     const isMessagePayload = (message) => Boolean(
         message
+        && typeof message.id === 'string'
         && typeof message.codename === 'string'
         && typeof message.affiliation === 'string'
         && typeof message.message === 'string'
+        && typeof message.createdAt === 'string'
     );
 
     const createMessageCard = (message, { isNew = false } = {}) => {
         const article = document.createElement('article');
         article.className = `message-card${isNew ? ' is-new' : ''}`;
+        article.dataset.messageId = message.id;
 
         const text = document.createElement('p');
         text.className = 'message-text';
@@ -73,7 +76,19 @@
         affiliation.className = 'message-affiliation';
         affiliation.textContent = message.affiliation;
 
+        const timeSeparator = separator.cloneNode(true);
+        const time = document.createElement('time');
+        time.className = 'message-time';
+        time.dateTime = message.createdAt;
+        const parsedDate = new Date(message.createdAt);
+        time.textContent = Number.isNaN(parsedDate.getTime())
+            ? ''
+            : dateFormatter.format(parsedDate);
+
         meta.append(author, separator, affiliation);
+        if (time.textContent) {
+            meta.append(timeSeparator, time);
+        }
         article.append(text, meta);
 
         return article;
@@ -138,17 +153,14 @@
 
         const hasMessages = elements.messages.childElementCount > 0;
         const hasError = elements.errorState && !elements.errorState.hidden;
-        const isInitialLoading = state.loading && state.page === 0;
-        elements.emptyState.hidden = hasMessages || hasError || isInitialLoading;
+        elements.emptyState.hidden = hasMessages || hasError || state.loading;
     };
 
     const setInitialLoading = (isLoading) => {
         if (elements.loadingState) {
             elements.loadingState.hidden = !isLoading;
         }
-        if (elements.messages) {
-            elements.messages.setAttribute('aria-busy', String(isLoading));
-        }
+        elements.messages?.setAttribute('aria-busy', String(isLoading));
     };
 
     const setLoadMoreState = () => {
@@ -156,9 +168,9 @@
             return;
         }
 
-        elements.loadMore.hidden = !state.hasMore || state.page === 0;
+        elements.loadMore.hidden = !state.hasMore || state.loading && state.ids.size === 0;
         elements.loadMore.disabled = state.loading;
-        elements.loadMore.textContent = state.loading && state.page > 0
+        elements.loadMore.textContent = state.loading && state.ids.size > 0
             ? 'กำลังโหลด...'
             : 'อ่านข้อความก่อนหน้า';
     };
@@ -185,22 +197,22 @@
 
     const resetMessageFeed = () => {
         elements.messages?.replaceChildren();
-        state.signatures.clear();
+        state.ids.clear();
+        state.nextCursor = null;
+        state.hasMore = true;
     };
 
-    const fetchMessages = async (page) => {
+    const fetchMessages = async (before = null) => {
         const url = new URL(API_PATH, window.location.origin);
-        url.searchParams.set('page', String(page));
         url.searchParams.set('limit', String(PAGE_LIMIT));
+        if (before) {
+            url.searchParams.set('before', before);
+        }
 
         const response = await fetch(url, {
             method: 'GET',
             headers: { Accept: 'application/json' },
         });
-
-        if (response.status === 204) {
-            return [];
-        }
 
         if (!response.ok) {
             const error = new Error('Unable to fetch messages');
@@ -208,12 +220,12 @@
             throw error;
         }
 
-        const data = await response.json();
-        if (!Array.isArray(data)) {
+        const body = await response.json();
+        if (!body || !Array.isArray(body.data) || !body.pagination) {
             throw new Error('Unexpected message response');
         }
 
-        return data;
+        return body;
     };
 
     const appendHistory = (messages) => {
@@ -221,54 +233,54 @@
             return;
         }
 
-        const signaturesBeforePage = new Set(state.signatures);
         const fragment = document.createDocumentFragment();
-
         messages.forEach((message) => {
-            if (!isMessagePayload(message)) {
-                return;
-            }
-
-            const signature = messageSignature(message);
-            if (signaturesBeforePage.has(signature)) {
+            if (!isMessagePayload(message) || state.ids.has(message.id)) {
                 return;
             }
 
             fragment.appendChild(createMessageCard(message));
-            state.signatures.add(signature);
+            state.ids.add(message.id);
         });
-
         elements.messages.appendChild(fragment);
     };
 
-    const loadPage = async (page, { reset = false, quiet = false } = {}) => {
-        if (state.loading) {
+    const prependFreshMessages = (messages) => {
+        if (!elements.messages) {
             return;
         }
 
-        if (reset) {
-            resetMessageFeed();
+        [...messages].reverse().forEach((message) => {
+            if (!isMessagePayload(message) || state.ids.has(message.id)) {
+                return;
+            }
+
+            elements.messages.prepend(createMessageCard(message, { isNew: true }));
+            state.ids.add(message.id);
+        });
+        updateEmptyState();
+    };
+
+    const loadOlderMessages = async ({ initial = false } = {}) => {
+        if (state.loading || !state.hasMore) {
+            return;
         }
 
         state.loading = true;
-        const initialLoad = state.page === 0 && !quiet;
-
-        if (initialLoad) {
+        if (initial) {
             setInitialLoading(true);
-        }
-        if (reset || initialLoad) {
             hideLoadError();
         }
         setLoadMoreState();
 
         try {
-            const messages = await fetchMessages(page);
-            appendHistory(messages);
-            state.page = page;
-            state.hasMore = messages.length === PAGE_LIMIT;
+            const result = await fetchMessages(state.nextCursor);
+            appendHistory(result.data);
+            state.nextCursor = result.pagination.nextCursor || null;
+            state.hasMore = Boolean(result.pagination.hasMore);
             hideLoadError();
         } catch (error) {
-            if (state.page === 0 || reset) {
+            if (state.ids.size === 0) {
                 showLoadError(error);
             } else {
                 showToast('โหลดข้อความก่อนหน้าไม่สำเร็จ กรุณาลองใหม่', 'error');
@@ -281,15 +293,25 @@
         }
     };
 
-    const prependLiveMessage = (message) => {
-        if (!elements.messages || !isMessagePayload(message)) {
+    const refreshLatestMessages = async () => {
+        if (document.hidden) {
             return;
         }
 
-        const card = createMessageCard(message, { isNew: true });
-        elements.messages.prepend(card);
-        state.signatures.add(messageSignature(message));
-        updateEmptyState();
+        try {
+            const result = await fetchMessages();
+            prependFreshMessages(result.data);
+        } catch (error) {
+            // Healing refresh is intentionally quiet. Interactive loads still
+            // surface errors; this poll only repairs missed realtime events.
+        }
+    };
+
+    const prependLiveMessage = (message) => {
+        if (!isMessagePayload(message) || state.ids.has(message.id)) {
+            return;
+        }
+        prependFreshMessages([message]);
     };
 
     const setSubmitBusy = (busy) => {
@@ -309,11 +331,8 @@
 
     const resetFieldValidity = () => {
         [elements.message, elements.codename, elements.affiliation].forEach((field) => {
-            if (!field) {
-                return;
-            }
-            field.setCustomValidity('');
-            field.removeAttribute('aria-invalid');
+            field?.setCustomValidity('');
+            field?.removeAttribute('aria-invalid');
         });
     };
 
@@ -326,13 +345,11 @@
             message: elements.message?.value.trim() || '',
         };
 
-        const fields = [
+        [
             [elements.message, payload.message],
             [elements.codename, payload.codename],
             [elements.affiliation, payload.affiliation],
-        ];
-
-        fields.forEach(([field, value]) => {
+        ].forEach(([field, value]) => {
             if (field && value.length === 0) {
                 field.setCustomValidity('กรุณากรอกข้อมูลในช่องนี้');
                 field.setAttribute('aria-invalid', 'true');
@@ -371,20 +388,16 @@
     const describeSubmitError = (error) => {
         if (error?.status === 429) {
             const seconds = Number.parseInt(error.retryAfter, 10);
-            if (Number.isFinite(seconds) && seconds > 0) {
-                return `ส่งข้อความถี่เกินไป กรุณาลองใหม่ในประมาณ ${seconds} วินาที`;
-            }
-            return 'ส่งข้อความถี่เกินไป กรุณารอสักครู่แล้วลองใหม่';
+            return Number.isFinite(seconds) && seconds > 0
+                ? `ส่งข้อความถี่เกินไป กรุณาลองใหม่ในประมาณ ${seconds} วินาที`
+                : 'ส่งข้อความถี่เกินไป กรุณารอสักครู่แล้วลองใหม่';
         }
-
         if (error?.status === 503) {
             return 'ระบบฐานข้อมูลยังไม่พร้อมใช้งาน กรุณาลองใหม่ภายหลัง';
         }
-
-        if (error?.status === 400) {
+        if (error?.status === 400 || error?.status === 415) {
             return 'ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบข้อความแล้วลองใหม่';
         }
-
         return 'ส่งข้อความไม่สำเร็จ กรุณาลองใหม่อีกครั้ง';
     };
 
@@ -399,16 +412,13 @@
         setFormStatus('กำลังส่งข้อความ...');
 
         try {
-            await postMessage(payload);
+            const created = await postMessage(payload);
+            prependLiveMessage(created);
             elements.form.reset();
             updateCharacterCount();
             resetFieldValidity();
             setFormStatus('ส่งข้อความเรียบร้อยแล้ว', 'success');
             showToast('ส่งข้อความแล้ว ขอบคุณที่ร่วมบันทึกความทรงจำ', 'success');
-
-            if (!socket || !socket.connected) {
-                await loadPage(1, { reset: true, quiet: true });
-            }
         } catch (error) {
             const message = describeSubmitError(error);
             setFormStatus(message, 'error');
@@ -440,15 +450,12 @@
 
     const bindFeedActions = () => {
         elements.retryLoad?.addEventListener('click', () => {
-            state.page = 0;
-            state.hasMore = true;
-            loadPage(1, { reset: true });
+            resetMessageFeed();
+            loadOlderMessages({ initial: true });
         });
 
         elements.loadMore?.addEventListener('click', () => {
-            if (state.hasMore) {
-                loadPage(state.page + 1);
-            }
+            loadOlderMessages();
         });
     };
 
@@ -459,19 +466,31 @@
         }
 
         setLiveStatus(socket.connected ? 'live' : 'connecting');
-        socket.on('connect', () => setLiveStatus('live'));
+        socket.on('connect', () => {
+            setLiveStatus('live');
+            refreshLatestMessages();
+        });
         socket.on('disconnect', () => setLiveStatus('offline'));
         socket.on('connect_error', () => setLiveStatus('offline'));
         socket.on('message', prependLiveMessage);
     };
 
+    const startHealingRefresh = () => {
+        state.refreshTimer = window.setInterval(refreshLatestMessages, HEALING_REFRESH_MS);
+        window.addEventListener('pagehide', () => {
+            window.clearInterval(state.refreshTimer);
+        }, { once: true });
+    };
+
     const init = () => {
         cacheElements();
+        resetMessageFeed();
         bindForm();
         bindFeedActions();
         bindSocket();
+        startHealingRefresh();
         updateCharacterCount();
-        loadPage(1, { reset: true });
+        loadOlderMessages({ initial: true });
     };
 
     if (document.readyState === 'loading') {

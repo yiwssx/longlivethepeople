@@ -1,35 +1,45 @@
 const DEFAULT_MAX_BUCKETS = 10_000;
 
-const createRateLimit = ({ windowMs, max, maxBuckets = DEFAULT_MAX_BUCKETS }) => {
+const createRateLimit = ({
+    windowMs,
+    max,
+    maxBuckets = DEFAULT_MAX_BUCKETS,
+    keyFn = (req) => req.ip || req.socket?.remoteAddress || 'unknown',
+    onLimit,
+}) => {
     const buckets = new Map();
 
-    const pruneBuckets = (now) => {
-        for (const [key, bucket] of buckets) {
-            if (bucket.resetAt <= now) {
-                buckets.delete(key);
-            }
+    const createBucket = (now) => ({
+        count: 0,
+        resetAt: now + windowMs,
+    });
+
+    const evictOldestBucket = () => {
+        if (buckets.size < maxBuckets) {
+            return;
         }
 
-        while (buckets.size >= maxBuckets) {
-            const oldestKey = buckets.keys().next().value;
-            if (oldestKey === undefined) {
-                break;
-            }
+        const oldestKey = buckets.keys().next().value;
+        if (oldestKey !== undefined) {
             buckets.delete(oldestKey);
         }
     };
 
     return (req, res, next) => {
         const now = Date.now();
-        const key = req.ip || req.socket?.remoteAddress || 'unknown';
+        const key = String(keyFn(req));
         let bucket = buckets.get(key);
 
         if (!bucket || bucket.resetAt <= now) {
-            if (buckets.size >= maxBuckets) {
-                pruneBuckets(now);
+            if (bucket) {
+                buckets.delete(key);
             }
-
-            bucket = { count: 0, resetAt: now + windowMs };
+            evictOldestBucket();
+            bucket = createBucket(now);
+            buckets.set(key, bucket);
+        } else {
+            // Refresh insertion order so the cap behaves as a simple LRU bound.
+            buckets.delete(key);
             buckets.set(key, bucket);
         }
 
@@ -40,7 +50,12 @@ const createRateLimit = ({ windowMs, max, maxBuckets = DEFAULT_MAX_BUCKETS }) =>
         res.setHeader('RateLimit-Reset', String(Math.ceil(bucket.resetAt / 1000)));
 
         if (bucket.count > max) {
-            res.setHeader('Retry-After', String(Math.max(1, Math.ceil((bucket.resetAt - now) / 1000))));
+            const retryAfter = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
+            res.setHeader('Retry-After', String(retryAfter));
+
+            if (typeof onLimit === 'function') {
+                return onLimit(req, res, retryAfter);
+            }
             return res.sendStatus(429);
         }
 
