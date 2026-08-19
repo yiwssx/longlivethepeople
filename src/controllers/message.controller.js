@@ -1,56 +1,100 @@
-// Controller helpers for working with message documents and broadcasting updates.
 const Message = require('../models/message.model');
 const databaseService = require('../services/database.service');
+const metrics = require('../services/metrics.service');
 const io = require('../services/socketio.service');
+const {
+    DatabaseUnavailableError,
+    ValidationAppError,
+} = require('../errors/app-error');
+const { encodeCursor } = require('../utils/message-cursor');
 
-const MESSAGE_FIELDS = ['codename', 'affiliation', 'message'];
 const DATABASE_WAIT_MS = 1000;
 
-// Remove database metadata before returning responses to clients.
-const toSanitizedMessage = (message) =>
-    MESSAGE_FIELDS.reduce((acc, field) => {
-        acc[field] = message[field];
-        return acc;
-    }, {});
+const toPublicMessage = (message) => ({
+    id: String(message._id),
+    codename: message.codename,
+    affiliation: message.affiliation,
+    message: message.message,
+    createdAt: new Date(message.createdAt).toISOString(),
+});
 
-// Fetch messages ordered from newest to oldest. A null result means the database
-// is unavailable; an empty array means the database is healthy but has no rows.
-const getMessage = async ({ limit, skip }) => {
+const buildCursorFilter = (cursor) => {
+    const visibilityFilter = {
+        status: { $in: ['published', null] },
+    };
+
+    if (!cursor) {
+        return visibilityFilter;
+    }
+
+    return {
+        ...visibilityFilter,
+        $or: [
+            { createdAt: { $lt: cursor.createdAt } },
+            {
+                createdAt: cursor.createdAt,
+                _id: { $lt: cursor.id },
+            },
+        ],
+    };
+};
+
+const getMessages = async ({ limit, cursor }) => {
     const databaseReady = await databaseService.waitForConnection(DATABASE_WAIT_MS);
     if (!databaseReady) {
-        return null;
+        throw new DatabaseUnavailableError();
     }
 
-    return Message.find({})
-        .select([...MESSAGE_FIELDS, '-_id'])
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
+    const documents = await Message.find(buildCursorFilter(cursor))
+        .select(['codename', 'affiliation', 'message', 'createdAt'])
+        .sort({ createdAt: -1, _id: -1 })
+        .limit(limit + 1)
         .lean();
+
+    const hasMore = documents.length > limit;
+    const visibleDocuments = hasMore ? documents.slice(0, limit) : documents;
+    const data = visibleDocuments.map(toPublicMessage);
+    const last = visibleDocuments.at(-1);
+    const nextCursor = hasMore && last
+        ? encodeCursor({ createdAt: last.createdAt, id: last._id })
+        : null;
+
+    return {
+        data,
+        pagination: {
+            limit,
+            hasMore,
+            nextCursor,
+        },
+    };
 };
 
-// Persist a new message then notify connected Socket.IO clients.
-const postMessage = async (payload, res) => {
+const createMessage = async (payload) => {
+    const databaseReady = await databaseService.waitForConnection(DATABASE_WAIT_MS);
+    if (!databaseReady) {
+        throw new DatabaseUnavailableError();
+    }
+
     try {
-        const databaseReady = await databaseService.waitForConnection(DATABASE_WAIT_MS);
-        if (!databaseReady) {
-            return res.sendStatus(503);
-        }
+        const saved = await Message.create({
+            ...payload,
+            status: 'published',
+        });
+        const publicMessage = toPublicMessage(saved);
 
-        const data = new Message(payload);
-        const saved = await data.save();
-        const sanitized = toSanitizedMessage(saved);
-
-        io.emit('message', sanitized);
-        return res.status(201).json(sanitized);
+        metrics.increment('messagesCreatedTotal');
+        io.emit('message', publicMessage);
+        return publicMessage;
     } catch (error) {
         if (error?.name === 'ValidationError') {
-            return res.sendStatus(400);
+            throw new ValidationAppError('Message fields failed validation');
         }
-
-        console.error(error);
-        return res.sendStatus(500);
+        throw error;
     }
 };
 
-module.exports = { getMessage, postMessage };
+module.exports = {
+    getMessages,
+    createMessage,
+    toPublicMessage,
+};

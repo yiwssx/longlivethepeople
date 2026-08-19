@@ -1,30 +1,17 @@
 #!/usr/bin/env node
 
-// Server bootstrap script responsible for starting the HTTP server
 const http = require('http');
-const debug = require('debug')('longlivethepeople:server');
 
 const app = require('./app');
 const config = require('./config/config');
+const databaseService = require('./services/database.service');
 const io = require('./services/socketio.service');
 
-// Normalize the port and configure the Express app to use it
-const port = normalizePort(config.port);
-app.set('port', port);
-
-const server = http.createServer(app);
-io.start(server);
-
-server.listen(port);
-server.on('error', onError);
-server.on('listening', onListening);
-
-// Ensure ports passed in via environment or string values are valid numbers
-function normalizePort(val) {
-    const normalizedPort = parseInt(val, 10);
+const normalizePort = (value) => {
+    const normalizedPort = Number.parseInt(value, 10);
 
     if (Number.isNaN(normalizedPort)) {
-        return val;
+        return value;
     }
 
     if (normalizedPort >= 0) {
@@ -32,35 +19,135 @@ function normalizePort(val) {
     }
 
     return false;
-}
+};
 
-// Provide friendly logging and exits for common server startup errors
-function onError(error) {
-    if (error.syscall !== 'listen') {
-        throw error;
+const listen = (server, port) => new Promise((resolve, reject) => {
+    const onError = (error) => {
+        server.off('listening', onListening);
+        reject(error);
+    };
+    const onListening = () => {
+        server.off('error', onError);
+        resolve();
+    };
+
+    server.once('error', onError);
+    server.once('listening', onListening);
+    server.listen(port);
+});
+
+const closeServer = (server) => new Promise((resolve, reject) => {
+    if (!server.listening) {
+        resolve();
+        return;
     }
 
-    const bind = typeof port === 'string'
-        ? `Pipe ${port}`
-        : `Port ${port}`;
+    server.close((error) => {
+        if (error) {
+            reject(error);
+            return;
+        }
+        resolve();
+    });
+});
 
-    switch (error.code) {
-    case 'EACCES':
-        console.error(`${bind} requires elevated privileges`);
-        process.exit(1);
-    case 'EADDRINUSE':
-        console.error(`${bind} is already in use`);
-        process.exit(1);
-    default:
-        throw error;
+const startServer = async ({
+    port: portOverride,
+    registerSignalHandlers = true,
+} = {}) => {
+    const port = normalizePort(portOverride ?? config.port);
+
+    await databaseService.connect(config.mongodb.uri, config.mongodb.options);
+
+    const server = http.createServer(app);
+    io.start(server);
+    await listen(server, port);
+
+    const address = server.address();
+    const boundPort = typeof address === 'string' ? address : address.port;
+
+    if (config.env !== 'test') {
+        console.log(JSON.stringify({
+            level: 'info',
+            event: 'server_listening',
+            port: boundPort,
+        }));
     }
+
+    let shuttingDown = false;
+    const signalHandlers = new Map();
+
+    const shutdown = async (reason = 'manual') => {
+        if (shuttingDown) {
+            return;
+        }
+        shuttingDown = true;
+
+        for (const [signal, handler] of signalHandlers) {
+            process.off(signal, handler);
+        }
+
+        const shutdownWork = (async () => {
+            await io.stop();
+            await closeServer(server);
+            await databaseService.disconnect();
+        })();
+
+        const timeout = new Promise((resolve, reject) => {
+            const timer = setTimeout(() => {
+                reject(new Error(`Graceful shutdown timed out after ${config.http.shutdownTimeoutMs}ms`));
+            }, config.http.shutdownTimeoutMs);
+            timer.unref();
+        });
+
+        await Promise.race([shutdownWork, timeout]);
+
+        if (config.env !== 'test') {
+            console.log(JSON.stringify({
+                level: 'info',
+                event: 'server_stopped',
+                reason,
+            }));
+        }
+    };
+
+    if (registerSignalHandlers) {
+        ['SIGTERM', 'SIGINT'].forEach((signal) => {
+            const handler = () => {
+                shutdown(signal)
+                    .then(() => process.exit(0))
+                    .catch((error) => {
+                        console.error(JSON.stringify({
+                            level: 'error',
+                            event: 'shutdown_failed',
+                            reason: signal,
+                            message: error.message,
+                        }));
+                        process.exit(1);
+                    });
+            };
+
+            signalHandlers.set(signal, handler);
+            process.on(signal, handler);
+        });
+    }
+
+    return {
+        server,
+        port: boundPort,
+        shutdown,
+    };
+};
+
+if (require.main === module) {
+    startServer().catch((error) => {
+        console.error(JSON.stringify({
+            level: 'error',
+            event: 'startup_failed',
+            message: error.message,
+        }));
+        process.exit(1);
+    });
 }
 
-// Log out the bound address once the server is ready to receive traffic
-function onListening() {
-    const addr = server.address();
-    const bind = typeof addr === 'string'
-        ? `pipe ${addr}`
-        : `port ${addr.port}`;
-    debug(`Listening on ${bind}`);
-}
+module.exports = { startServer, normalizePort };
