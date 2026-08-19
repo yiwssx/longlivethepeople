@@ -16,8 +16,10 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Checkout
+      - name: Checkout security branch
         uses: actions/checkout@v4
+        with:
+          ref: agent/ci-security-audit
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -28,8 +30,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Apply non-breaking audit fixes on security branch
-        if: github.event_name == 'push' && github.actor != 'github-actions[bot]'
+      - name: Apply non-breaking audit fixes
         run: npm audit fix
 
       - name: Run tests
@@ -39,7 +40,6 @@ jobs:
         run: npm audit --audit-level=high
 
       - name: Commit audited lockfile
-        if: github.event_name == 'push' && github.actor != 'github-actions[bot]'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
