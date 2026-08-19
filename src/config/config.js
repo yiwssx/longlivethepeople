@@ -1,4 +1,6 @@
 // Centralized configuration object that reads from environment variables.
+const messageLimits = require('./message-limits');
+
 const DEFAULT_MONGODB_URI = 'mongodb://localhost:27017/test';
 const DEFAULT_DEV_SECRET = 'development-only-longlivethepeople';
 const env = process.env.NODE_ENV || 'development';
@@ -66,9 +68,7 @@ const config = {
         bodyLimit: process.env.BODY_LIMIT || '16kb',
     },
     messages: {
-        codenameMaxLength: 80,
-        affiliationMaxLength: 120,
-        messageMaxLength: 2000,
+        ...messageLimits,
         defaultPageSize: parsePositiveInteger(process.env.MESSAGE_PAGE_SIZE, 50),
         maxPageSize: 100,
         rateLimitWindowMs: parsePositiveInteger(process.env.MESSAGE_RATE_LIMIT_WINDOW_MS, 60_000),
