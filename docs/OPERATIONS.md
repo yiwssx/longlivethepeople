@@ -4,6 +4,8 @@ This is an archived project, not a service that requires enterprise infrastructu
 
 ## Deployment contract
 
+Runtime baseline: Node.js 24 LTS.
+
 Required in production:
 
 - `NODE_ENV=production`
@@ -95,7 +97,7 @@ Restore procedure:
 
 ## Metrics and logging
 
-Each HTTP response includes `X-Request-Id`. Server logs are JSON and include request ID, method, path, status, duration, and IP without logging message bodies.
+Each HTTP response includes `X-Request-Id`. Server logs are JSON and include request ID, method, path, status, and duration without logging message bodies or raw visitor IP addresses. IP addresses are used only transiently by the in-process rate limiter.
 
 When `METRICS_TOKEN` is set:
 
