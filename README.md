@@ -24,7 +24,7 @@ Development defaults are provided for local use. In `NODE_ENV=production`, both 
 - `PORT` — HTTP port, default `3000`
 - `MONGODB_URI` — MongoDB connection string; required in production
 - `SESSION_SECRET` — strong random session secret; required in production
-- `TRUST_PROXY` — Express trust-proxy value; defaults to `1` in production and `false` otherwise
+- `TRUST_PROXY` — Express trust-proxy value, default `false`; set this only when the app is behind a trusted reverse proxy (for example `1` for one trusted proxy hop)
 - `CORS_ORIGINS` — comma-separated list of explicitly allowed cross-origin browser origins; omit for same-origin production traffic
 - `BODY_LIMIT` — maximum JSON/form request body size, default `16kb`
 - `MESSAGE_PAGE_SIZE` — default GET page size, default `50`, capped at `100`
@@ -32,14 +32,17 @@ Development defaults are provided for local use. In `NODE_ENV=production`, both 
 - `MESSAGE_RATE_LIMIT_MAX` — maximum message POSTs per IP in each window, default `10`
 - `SOCKET_MAX_HTTP_BUFFER_SIZE` — Socket.IO HTTP payload limit in bytes, default `65536`
 
-Example production configuration:
+Example production configuration behind one trusted reverse proxy:
 
 ```bash
 NODE_ENV=production \
 MONGODB_URI='mongodb://user:password@mongodb:27017/longlivethepeople' \
 SESSION_SECRET='replace-with-a-long-random-secret' \
+TRUST_PROXY=1 \
 npm start
 ```
+
+Do not enable `TRUST_PROXY` unless the network path actually guarantees that untrusted clients cannot bypass the trusted proxy and inject forwarding headers directly.
 
 ## Message API
 
