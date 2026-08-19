@@ -6,129 +6,70 @@
 </head>
 
 <body class="memorial-page">
-    <a class="skip-link" href="#main-content">ข้ามไปยังเนื้อหาหลัก</a>
-
-    <main id="main-content" class="page-shell">
-        <section class="hero-card" aria-labelledby="memorial-title">
+    <main class="page-shell">
+        <section class="hero-card">
             <div class="hero-media">
                 <img class="hero-image" src="/assets/img/longlivethepeople.jpg" alt="Long Live the People" fetchpriority="high" />
             </div>
-            <div class="hero-copy">
-                <p class="eyebrow">LONG LIVE THE PEOPLE</p>
-                <h1 id="memorial-title">พื้นที่แห่งความอาลัยและความทรงจำ</h1>
-                <p class="hero-description">
-                    ร่วมบันทึกข้อความถึงผู้คนที่จากไป ให้ความทรงจำและเสียงของประชาชนยังคงถูกมองเห็น
-                </p>
-            </div>
         </section>
 
-        <section class="compose-card" aria-labelledby="compose-title">
-            <div class="section-heading">
-                <div>
-                    <p class="eyebrow">ส่งต่อความทรงจำ</p>
-                    <h2 id="compose-title">ร่วมส่งข้อความไว้อาลัย</h2>
-                </div>
-                <p class="section-note">ข้อความของคุณจะปรากฏบนพื้นที่นี้แบบเรียลไทม์</p>
-            </div>
-
+        <section class="compose-card">
             <form id="message-form" class="message-form" autocomplete="off" novalidate>
                 <div class="field-group">
-                    <div class="field-label-row">
-                        <label for="message">ข้อความไว้อาลัย</label>
-                        <span id="message-count" class="character-count" aria-live="polite">0 / 2,000</span>
-                    </div>
                     <textarea
                         class="form-control message-input"
                         id="message"
                         name="message"
                         rows="6"
                         maxlength="2000"
-                        placeholder="เขียนสิ่งที่คุณอยากบอก..."
-                        aria-describedby="message-help message-count"
+                        placeholder="ข้อความแสดงความไว้อาลัย"
+                        aria-label="ข้อความแสดงความไว้อาลัย"
                         required></textarea>
-                    <p id="message-help" class="field-help">สูงสุด 2,000 ตัวอักษร</p>
                 </div>
 
                 <div class="form-grid">
                     <div class="field-group">
-                        <label for="codename">นามแฝง</label>
                         <input
                             class="form-control"
                             type="text"
                             id="codename"
                             name="codename"
                             maxlength="80"
-                            placeholder="ชื่อที่ต้องการให้แสดง"
+                            placeholder="นามแฝง"
+                            aria-label="นามแฝง"
                             required />
                     </div>
 
                     <div class="field-group">
-                        <label for="affiliation">สังกัด</label>
                         <input
                             class="form-control"
                             type="text"
                             id="affiliation"
                             name="affiliation"
                             maxlength="120"
-                            placeholder="หน่วยงาน กลุ่ม หรือชุมชน"
+                            placeholder="สังกัด"
+                            aria-label="สังกัด"
                             required />
                     </div>
                 </div>
 
                 <div class="form-actions">
-                    <p id="form-status" class="form-status" role="status" aria-live="polite"></p>
-                    <button class="btn btn-primary" id="send" type="submit">
-                        <span class="button-label">ส่งข้อความไว้อาลัย</span>
-                        <span class="button-spinner" aria-hidden="true"></span>
-                    </button>
+                    <button class="btn btn-primary" id="send" type="submit">ไว้อาลัย</button>
                 </div>
             </form>
         </section>
 
-        <section class="feed-section" aria-labelledby="feed-title">
+        <section class="feed-section">
             <div class="section-heading feed-heading">
                 <div>
-                    <p class="eyebrow">เสียงจากผู้คน</p>
-                    <h2 id="feed-title">ข้อความไว้อาลัย</h2>
-                </div>
-                <div id="live-status" class="live-status" data-state="connecting" role="status" aria-live="polite">
-                    <span class="live-dot" aria-hidden="true"></span>
-                    <span class="live-label">กำลังเชื่อมต่อ</span>
+                    <p class="eyebrow">ผู้ไว้อาลัย::สังกัด</p>
+                    <h2>ข้อความไว้อาลัย</h2>
                 </div>
             </div>
 
-            <div id="feed-state" class="feed-state">
-                <div id="loading-state" class="skeleton-stack" aria-label="กำลังโหลดข้อความ">
-                    <div class="skeleton-card"><span></span><span></span><span></span></div>
-                    <div class="skeleton-card"><span></span><span></span><span></span></div>
-                    <div class="skeleton-card"><span></span><span></span><span></span></div>
-                </div>
-
-                <div id="empty-state" class="state-card" hidden>
-                    <p class="state-kicker">ยังไม่มีข้อความ</p>
-                    <h3>เป็นคนแรกที่ร่วมส่งความทรงจำ</h3>
-                    <p>ข้อความที่ส่งสำเร็จจะแสดงที่นี่ทันที</p>
-                </div>
-
-                <div id="error-state" class="state-card state-error" hidden>
-                    <p class="state-kicker">โหลดข้อมูลไม่สำเร็จ</p>
-                    <h3>ยังไม่สามารถเชื่อมต่อข้อมูลข้อความได้</h3>
-                    <p id="error-message">กรุณาลองอีกครั้ง</p>
-                    <button id="retry-load" class="btn btn-secondary" type="button">ลองใหม่</button>
-                </div>
-            </div>
-
-            <div id="messages" class="message-feed" aria-live="polite" aria-busy="true"></div>
-
-            <div class="feed-actions">
-                <button id="load-more" class="btn btn-secondary" type="button" hidden>
-                    อ่านข้อความก่อนหน้า
-                </button>
-            </div>
+            <div id="messages" class="message-feed" aria-live="polite"></div>
         </section>
     </main>
-
-    <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <footer class="site-footer">
         <span>Fuck</span>
