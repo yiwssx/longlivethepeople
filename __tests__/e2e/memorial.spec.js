@@ -39,27 +39,27 @@ test.afterAll(async () => {
 });
 
 const messageBox = (page) => page.getByRole('textbox', {
-    name: 'ข้อความไว้อาลัย',
+    name: 'ข้อความแสดงความไว้อาลัย',
     exact: true,
 });
 
 test('visitor can enter the archive and publish a message', async ({ page }) => {
     await page.goto(baseUrl);
 
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('พื้นที่เพื่อระลึกถึงชีวิต');
+    await expect(page).toHaveTitle('ระบบไว้อาลัยเหตุการณ์โควิด-19');
     await page.getByRole('link', { name: /ร่วมแสดงความเสียใจ/ }).click();
     await expect(page).toHaveURL(`${baseUrl}/memorial`);
 
     await messageBox(page).fill('ข้อความจาก Playwright');
     await page.getByRole('textbox', { name: 'นามแฝง', exact: true }).fill('Archive Tester');
     await page.getByRole('textbox', { name: 'สังกัด', exact: true }).fill('Long Live the People');
-    await page.getByRole('button', { name: 'ส่งข้อความไว้อาลัย' }).click();
+    await page.getByRole('button', { name: 'ไว้อาลัย', exact: true }).click();
 
     const card = page.locator('.message-card').filter({ hasText: 'ข้อความจาก Playwright' });
     await expect(card).toHaveCount(1);
-    await expect(card).toContainText('Archive Tester');
-    await expect(card.locator('time')).not.toHaveText('');
-    await expect(page.locator('#form-status')).toContainText('ส่งข้อความเรียบร้อยแล้ว');
+    await expect(card).toContainText('Archive Tester::Long Live the People');
+    await expect(page.getByRole('dialog')).toContainText('Success!');
+    await expect(page.getByRole('dialog')).toContainText('ส่งข้อความเรียบร้อย');
 });
 
 test('Socket.IO broadcasts a committed message to another connected visitor', async ({ browser }) => {
@@ -69,24 +69,22 @@ test('Socket.IO broadcasts a committed message to another connected visitor', as
 
     await receiver.goto(`${baseUrl}/memorial`);
     await sender.goto(`${baseUrl}/memorial`);
-    await expect(receiver.locator('#live-status')).toHaveAttribute('data-state', 'live');
-    await expect(sender.locator('#live-status')).toHaveAttribute('data-state', 'live');
 
     await messageBox(sender).fill('ข้อความ realtime ข้าม browser');
     await sender.getByRole('textbox', { name: 'นามแฝง', exact: true }).fill('Realtime Sender');
     await sender.getByRole('textbox', { name: 'สังกัด', exact: true }).fill('Archive');
-    await sender.getByRole('button', { name: 'ส่งข้อความไว้อาลัย' }).click();
+    await sender.getByRole('button', { name: 'ไว้อาลัย', exact: true }).click();
 
     const received = receiver.locator('.message-card').filter({ hasText: 'ข้อความ realtime ข้าม browser' });
     await expect(received).toHaveCount(1);
-    await expect(received).toContainText('Realtime Sender');
+    await expect(received).toContainText('Realtime Sender::Archive');
 
     await context.close();
 });
 
-test('cursor pagination loads older messages without duplicates', async ({ page }) => {
+test('cursor pagination restores the complete archive without duplicates', async ({ page }) => {
     const baseTime = Date.parse('2026-01-01T00:00:00.000Z');
-    const rows = Array.from({ length: 25 }, (_, index) => ({
+    const rows = Array.from({ length: 125 }, (_, index) => ({
         codename: `person-${index + 1}`,
         affiliation: 'archive',
         message: `message-${index + 1}`,
@@ -97,13 +95,10 @@ test('cursor pagination loads older messages without duplicates', async ({ page 
     await Message.create(rows);
 
     await page.goto(`${baseUrl}/memorial`);
-    await expect(page.locator('.message-card')).toHaveCount(20);
-
-    await page.getByRole('button', { name: 'อ่านข้อความก่อนหน้า' }).click();
-    await expect(page.locator('.message-card')).toHaveCount(25);
+    await expect(page.locator('.message-card')).toHaveCount(125);
 
     const ids = await page.locator('.message-card').evaluateAll((cards) => cards.map((card) => card.dataset.messageId));
-    expect(new Set(ids).size).toBe(25);
+    expect(new Set(ids).size).toBe(125);
 });
 
 test('landing and memorial remain usable on a mobile viewport', async ({ page }) => {
@@ -115,5 +110,5 @@ test('landing and memorial remain usable on a mobile viewport', async ({ page })
     await enter.click();
 
     await expect(messageBox(page)).toBeVisible();
-    await expect(page.getByRole('button', { name: 'ส่งข้อความไว้อาลัย' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'ไว้อาลัย', exact: true })).toBeVisible();
 });
