@@ -1,14 +1,31 @@
-// Schema and model definition for storing encrypted messages from visitors
+// Schema and model definition for storing visitor messages.
 const mongoose = require('mongoose');
+
+const config = require('../config/config');
 
 const Schema = mongoose.Schema;
 
-// Basic schema with timestamps to capture sender codename, affiliation, and content
+// Keep database-level validation aligned with the public API validation.
 const mSchema = new Schema(
     {
-        codename: { type: String, required: true },
-        affiliation: { type: String, required: true },
-        message: { type: String, required: true },
+        codename: {
+            type: String,
+            required: true,
+            trim: true,
+            maxlength: config.messages.codenameMaxLength,
+        },
+        affiliation: {
+            type: String,
+            required: true,
+            trim: true,
+            maxlength: config.messages.affiliationMaxLength,
+        },
+        message: {
+            type: String,
+            required: true,
+            trim: true,
+            maxlength: config.messages.messageMaxLength,
+        },
     },
     {
         timestamps: true,
