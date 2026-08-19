@@ -183,6 +183,11 @@
         }
     };
 
+    const resetMessageFeed = () => {
+        elements.messages?.replaceChildren();
+        state.signatures.clear();
+    };
+
     const fetchMessages = async (page) => {
         const url = new URL(API_PATH, window.location.origin);
         url.searchParams.set('page', String(page));
@@ -211,14 +216,9 @@
         return data;
     };
 
-    const appendHistory = (messages, { reset = false } = {}) => {
+    const appendHistory = (messages) => {
         if (!elements.messages) {
             return;
-        }
-
-        if (reset) {
-            elements.messages.replaceChildren();
-            state.signatures.clear();
         }
 
         const signaturesBeforePage = new Set(state.signatures);
@@ -230,7 +230,7 @@
             }
 
             const signature = messageSignature(message);
-            if (!reset && signaturesBeforePage.has(signature)) {
+            if (signaturesBeforePage.has(signature)) {
                 return;
             }
 
@@ -246,6 +246,10 @@
             return;
         }
 
+        if (reset) {
+            resetMessageFeed();
+        }
+
         state.loading = true;
         const initialLoad = state.page === 0 && !quiet;
 
@@ -259,7 +263,7 @@
 
         try {
             const messages = await fetchMessages(page);
-            appendHistory(messages, { reset });
+            appendHistory(messages);
             state.page = page;
             state.hasMore = messages.length === PAGE_LIMIT;
             hideLoadError();
