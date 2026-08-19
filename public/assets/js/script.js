@@ -33,7 +33,6 @@ const createMessageRow = (message) => {
 };
 
 $(() => {
-    
     getMessage();
     if (socket) {
         socket.on('message', addMessages);
@@ -76,20 +75,17 @@ $(() => {
                             $('form')[0].reset();
                         }
                     });
-                }).catch(() => {
+                }).catch((error) => {
+                    if (error.status === 429) {
+                        triggerRateLimit();
+                        return;
+                    }
                     triggerFailure();
                 });
             }
-
         });
     } catch(error) {
-        showDialog({
-            title: 'Fails!',
-            text: 'ส่งข้อความไม่สำเร็จ',
-            icon: 'error',
-            confirmButtonText: 'ปิดหน้าต่าง',
-            allowOutsideClick: false
-        });
+        triggerFailure();
     }
 });
 
@@ -117,6 +113,26 @@ const triggerFailure = () => {
     });
 };
 
+const triggerRateLimit = () => {
+    showDialog({
+        title: 'ส่งข้อความถี่เกินไป',
+        text: 'กรุณารอสักครู่ก่อนส่งข้อความอีกครั้ง',
+        icon: 'warning',
+        confirmButtonText: 'ปิดหน้าต่าง',
+        allowOutsideClick: false
+    });
+};
+
+const triggerLoadFailure = () => {
+    showDialog({
+        title: 'ไม่สามารถโหลดข้อความได้',
+        text: 'ระบบฐานข้อมูลอาจไม่พร้อมใช้งาน กรุณาลองใหม่ภายหลัง',
+        icon: 'error',
+        confirmButtonText: 'ปิดหน้าต่าง',
+        allowOutsideClick: false
+    });
+};
+
 const addMessages = (message) => {
     $('#messages>tbody').prepend(createMessageRow(message));
 };
@@ -137,7 +153,7 @@ const renderHistory = (messages) => {
 const getMessage = () => {
     fetch(API_PATH, {
         method: 'GET',
-        headers: HEADERS, 
+        headers: HEADERS,
     })
     .then((response) => {
         if(response.status === 204) {
@@ -145,14 +161,16 @@ const getMessage = () => {
         }
 
         if(!response.ok) {
-            throw new Error('Unable to fetch messages');
+            const error = new Error('Unable to fetch messages');
+            error.status = response.status;
+            throw error;
         }
 
         return response.json();
     })
     .then((data) => renderHistory(data))
     .catch(() => {
-        renderHistory([]);
+        triggerLoadFailure();
     });
 };
 
@@ -164,7 +182,9 @@ const sendMessage = async (data) => {
     });
 
     if(!response.ok) {
-        throw new Error('Unable to send message');
+        const error = new Error('Unable to send message');
+        error.status = response.status;
+        throw error;
     }
 
     return response.json();
