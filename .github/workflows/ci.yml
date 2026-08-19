@@ -8,7 +8,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   test:
@@ -28,8 +28,25 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Apply non-breaking audit fixes on security branch
+        if: github.event_name == 'push' && github.actor != 'github-actions[bot]'
+        run: npm audit fix
+
       - name: Run tests
         run: npm test
 
       - name: Audit high-severity vulnerabilities
         run: npm audit --audit-level=high
+
+      - name: Commit audited lockfile
+        if: github.event_name == 'push' && github.actor != 'github-actions[bot]'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json package.json
+          if git diff --cached --quiet; then
+            echo "No dependency changes to commit"
+            exit 0
+          fi
+          git commit -m "Apply npm audit fixes"
+          git push origin HEAD:agent/ci-security-audit
