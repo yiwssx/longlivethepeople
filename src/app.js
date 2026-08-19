@@ -1,4 +1,4 @@
-// Core Express setup and middleware dependencies for the application server
+// Core Express setup and middleware dependencies for the application server.
 const path = require('path');
 const express = require('express');
 const createError = require('http-errors');
@@ -22,7 +22,9 @@ const app = express();
 const isProduction = config.env === 'production';
 const isTest = config.env === 'test';
 
-// Basic recursive sanitizer that works with Express 5's request objects
+app.set('trust proxy', config.trustProxy);
+
+// Basic recursive sanitizer that works with Express 5's request objects.
 const sanitizeInPlace = (value) => {
     if (!value || typeof value !== 'object') {
         return;
@@ -65,19 +67,24 @@ const sanitizeRequest = (req, res, next) => {
     next();
 };
 
-// Only log requests outside of test environments to keep output clean
+// Only log requests outside of test environments to keep output clean.
 if (!isTest) {
     app.use(logger(isProduction ? 'combined' : 'dev'));
 }
-// Security-related middleware to harden the Express app
+
+// Security-related middleware to harden the Express app.
 app.use(helmet(config.cspRule));
 
-// Performance tweaks enabled only in production builds
+// Performance tweaks enabled only in production builds.
 if (isProduction) {
     app.use(compression());
     app.use(minify());
 }
-app.use(cors());
+
+// Cross-origin access is opt-in. Same-origin browser traffic does not require CORS.
+if (config.cors.origins.length > 0) {
+    app.use(cors({ origin: config.cors.origins }));
+}
 
 // Configure the view engine and serve static assets before session storage.
 // Static asset requests should not fail when the session database is unavailable.
@@ -86,14 +93,20 @@ app.set('views', path.resolve(__dirname, '../views'));
 app.use(express.static(path.resolve(__dirname, '../public'), { index: false }));
 app.use(favicon(path.resolve(__dirname, '../public/assets/img/favicon.ico')));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: config.http.bodyLimit }));
+app.use(express.urlencoded({ extended: true, limit: config.http.bodyLimit }));
 app.use(cookieParser());
+
 const sessionOptions = {
     secret: config.session.secret,
     saveUninitialized: false,
     resave: false,
-    cookie: { maxAge: config.session.maxAgeMs },
+    cookie: {
+        maxAge: config.session.maxAgeMs,
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: isProduction,
+    },
 };
 
 if (isProduction) {
@@ -106,7 +119,8 @@ if (isProduction) {
 app.use(sessions(sessionOptions));
 app.use(sanitizeRequest);
 
-// Establish the MongoDB connection before handling requests
+// Establish the MongoDB connection before handling database-backed requests.
+// Static content remains available while database-backed endpoints report 503.
 databaseService.connect(config.mongodb.uri, config.mongodb.options)
     .catch((error) => {
         if (!isTest) {
@@ -114,14 +128,14 @@ databaseService.connect(config.mongodb.uri, config.mongodb.options)
         }
     });
 
-// Register route handlers for web pages and API endpoints
+// Register route handlers for web pages and API endpoints.
 app.use('/', indexRoutes);
 app.use('/api/v1', messageRoutes);
 
-// Convert unmatched routes to 404 errors for centralized handling
+// Convert unmatched routes to 404 errors for centralized handling.
 app.use((req, res, next) => next(createError(404)));
 
-// Centralized error handling with graceful fallbacks for common status codes
+// Centralized error handling with graceful fallbacks for common status codes.
 app.use((err, req, res, next) => {
     res.locals.message = err.message;
     res.locals.error = req.app.get('env') === 'development' ? err : {};
@@ -130,10 +144,8 @@ app.use((err, req, res, next) => {
         return res.redirect('/');
     }
 
-    console.error(err);
-
-    if (err.status === 500) {
-        return res.sendStatus(500);
+    if ((err.status || 500) >= 500) {
+        console.error(err);
     }
 
     return res.sendStatus(err.status || 500);
