@@ -28,9 +28,10 @@ const requestContext = (req, res, next) => {
             path: req.originalUrl,
             status: res.statusCode,
             durationMs: Number(durationMs.toFixed(2)),
-            ip: req.ip,
         };
 
+        // Raw visitor IPs are intentionally not persisted in application logs.
+        // The rate limiter can still use req.ip transiently in memory.
         console.log(JSON.stringify(entry));
     });
 
