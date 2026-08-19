@@ -1,7 +1,7 @@
 // Schema and model definition for storing visitor messages.
 const mongoose = require('mongoose');
 
-const config = require('../config/config');
+const messageLimits = require('../config/message-limits');
 
 const Schema = mongoose.Schema;
 
@@ -12,19 +12,19 @@ const mSchema = new Schema(
             type: String,
             required: true,
             trim: true,
-            maxlength: config.messages.codenameMaxLength,
+            maxlength: messageLimits.codenameMaxLength,
         },
         affiliation: {
             type: String,
             required: true,
             trim: true,
-            maxlength: config.messages.affiliationMaxLength,
+            maxlength: messageLimits.affiliationMaxLength,
         },
         message: {
             type: String,
             required: true,
             trim: true,
-            maxlength: config.messages.messageMaxLength,
+            maxlength: messageLimits.messageMaxLength,
         },
     },
     {
