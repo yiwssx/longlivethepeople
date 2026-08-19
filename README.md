@@ -18,7 +18,7 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for design rationale and [`do
 
 ## Requirements
 
-- Node.js `>=20.19.0`
+- Node.js 24 LTS (`>=24.0.0 <25`)
 - MongoDB for local/deployed runtime
 
 Tests use `mongodb-memory-server`, so a separate MongoDB installation is not required for the automated test suites.
