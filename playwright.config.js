@@ -1,5 +1,5 @@
 module.exports = {
-    testDir: './__tests__/e2e',
+    testDir: './tests/e2e',
     timeout: 30_000,
     fullyParallel: false,
     workers: 1,
