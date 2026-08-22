@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@types/compression": "^1.8.0",
-    "@types/cors": "^2.8.0",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
     "@types/serve-favicon": "^2.5.0",
