@@ -1,18 +1,21 @@
 # Long Live the People
 
-An archived university-era memorial web application built with Node.js, Express, EJS, MongoDB, and Socket.IO.
+An archived university-era memorial web application built with Node.js, Express, React, TypeScript, Vite, MongoDB, and Socket.IO.
 
-This repository is preserved as an **archive project**. Later maintenance intentionally applies engineering practices learned after the original implementation—security hardening, reliability, observability, stable pagination, automated testing, and clearer architecture—without rewriting the project into a different framework or adding infrastructure that its scope does not need.
+This repository is preserved as an **archive project**. The original implementation was completed under a tight deadline after university. React was the intended frontend direction, but the available time favored an EJS/vanilla-JavaScript implementation. The later restoration keeps the original purpose, wording, imagery, API, and backend recognizable while completing that intended React frontend and applying engineering practices learned afterward.
 
 ## Current architecture
 
-The application is a modular monolith:
+The application remains a modular monolith:
 
-- Express serves the EJS/static web experience and message API.
+- React + TypeScript provide the browser UI.
+- Vite builds modern and legacy browser bundles.
+- Express serves the production frontend and message API.
 - MongoDB is the source of truth for messages.
-- Socket.IO delivers new messages in realtime.
+- Socket.IO delivers committed messages in realtime.
 - The frontend periodically refreshes the newest database page to heal missed realtime events.
-- The web layer is stateless; the original presentation-only session gate has been removed.
+- Cursor pagination loads older history incrementally instead of downloading the entire archive at startup.
+- The web layer is stateless.
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for design rationale and [`docs/OPERATIONS.md`](docs/OPERATIONS.md) for deployment, backup, moderation, and recovery guidance.
 
@@ -23,25 +26,41 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for design rationale and [`do
 
 Tests use `mongodb-memory-server`, so a separate MongoDB installation is not required for the automated test suites.
 
-## Getting started
+## Development
+
+Install the locked dependency graph:
 
 ```bash
 npm ci
-npm run watch:dev
 ```
 
-Development defaults to:
+Start Express and the Vite development server together:
 
-```text
-MONGODB_URI=mongodb://localhost:27017/test
-PORT=3000
+```bash
+npm run dev
 ```
 
-Then open the archive landing page at `/` and enter the memorial at `/memorial`.
+Development uses:
 
-## Production configuration
+- React/Vite: `http://127.0.0.1:5173`
+- Express/API/Socket.IO: `http://127.0.0.1:3000`
+- MongoDB default: `mongodb://localhost:27017/test`
 
-`NODE_ENV=production` requires `MONGODB_URI`; startup fails before accepting traffic when it is missing or MongoDB cannot be reached.
+Vite proxies API and Socket.IO requests to Express, so normal browser development happens through port `5173` with hot module replacement.
+
+## Production
+
+Build the frontend before starting the Node process:
+
+```bash
+npm ci
+npm run build
+NODE_ENV=production \
+MONGODB_URI='mongodb://user:password@mongodb:27017/longlivethepeople' \
+npm start
+```
+
+The generated frontend is stored under `dist/client/` and is served by Express. `NODE_ENV=production` requires `MONGODB_URI`; startup fails before accepting traffic when it is missing or MongoDB cannot be reached.
 
 Common environment variables:
 
@@ -51,7 +70,7 @@ Common environment variables:
 - `TRUST_PROXY` — default `false`; enable only behind the expected trusted proxy path
 - `CORS_ORIGINS` — comma-separated explicit cross-origin browser origins
 - `BODY_LIMIT` — JSON message body limit, default `16kb`
-- `MESSAGE_PAGE_SIZE` — default message page size, default `20`, maximum `100`
+- `MESSAGE_PAGE_SIZE` — backend default message page size, default `20`, maximum `100`
 - `MESSAGE_READ_RATE_LIMIT_WINDOW_MS` — default `60000`
 - `MESSAGE_READ_RATE_LIMIT_MAX` — default `300`
 - `MESSAGE_RATE_LIMIT_WINDOW_MS` — default `60000`
@@ -61,97 +80,40 @@ Common environment variables:
 - `SHUTDOWN_TIMEOUT_MS` — default `10000`
 - `METRICS_TOKEN` — enables bearer-protected `/metrics` when configured
 
-Example:
-
-```bash
-NODE_ENV=production \
-MONGODB_URI='mongodb://user:password@mongodb:27017/longlivethepeople' \
-TRUST_PROXY=1 \
-METRICS_TOKEN='replace-with-a-random-operations-token' \
-npm start
-```
-
 Do not enable `TRUST_PROXY` if untrusted clients can bypass the trusted reverse proxy and connect to the Node process directly.
+
+## Browser compatibility
+
+The production build contains both modern ESM and legacy SystemJS/polyfill bundles. The configured compatibility baseline is approximately:
+
+- Chrome 80+
+- Edge 80+
+- Firefox 78+
+- Safari 13+
+- iOS Safari 13+
+
+Internet Explorer is not supported. CI verifies that both modern and legacy bundles are emitted and that the strict CSP hashes generated for `@vitejs/plugin-legacy` match the installed plugin version.
 
 ## Operational endpoints
 
-### `GET /healthz`
-
-Process liveness. Does not require the database to be healthy.
-
-### `GET /readyz`
-
-Application readiness. Returns `200` while MongoDB is connected and `503` when it is unavailable.
-
-### `GET /metrics`
-
-Disabled unless `METRICS_TOKEN` is set. When enabled, requires:
-
-```text
-Authorization: Bearer <METRICS_TOKEN>
-```
-
-The response contains lightweight per-process counters for HTTP errors, messages, rate limiting, Socket.IO connections, and uptime.
+- `GET /healthz` — process liveness
+- `GET /readyz` — MongoDB-backed readiness
+- `GET /metrics` — disabled unless `METRICS_TOKEN` is configured; when enabled, requires `Authorization: Bearer <METRICS_TOKEN>`
 
 ## Message API
 
 ### `GET /api/v1/messages`
 
-Returns stable newest-first cursor pagination.
+Returns stable newest-first cursor pagination. Query parameters:
 
-Query parameters:
-
-- `limit` — positive integer up to `100`, default `20`
+- `limit` — positive integer up to `100`
 - `before` — opaque cursor returned by the previous response
 
-Response:
-
-```json
-{
-  "data": [
-    {
-      "id": "...",
-      "codename": "...",
-      "affiliation": "...",
-      "message": "...",
-      "createdAt": "2026-01-01T00:00:00.000Z"
-    }
-  ],
-  "pagination": {
-    "limit": 20,
-    "hasMore": true,
-    "nextCursor": "..."
-  }
-}
-```
-
-An empty database returns `200` with `data: []`. An unavailable database returns a structured `503` error.
+Public message records expose `id`, `codename`, `affiliation`, `message`, and `createdAt`.
 
 ### `POST /api/v1/messages`
 
-Accepts `application/json` only:
-
-```json
-{
-  "codename": "required, max 80 chars",
-  "affiliation": "required, max 120 chars",
-  "message": "required, max 2000 chars"
-}
-```
-
-The request is body-limited, validated, and rate-limited per IP. A successful response returns the created public message including stable `id` and `createdAt` fields. Exceeding the rate limit returns `429` with `Retry-After`.
-
-API errors use a consistent shape:
-
-```json
-{
-  "error": {
-    "code": "INVALID_MESSAGE",
-    "message": "...",
-    "requestId": "..."
-  }
-}
-```
+Accepts `application/json` only with required `codename`, `affiliation`, and `message` fields. Requests are size-limited, validated, and rate-limited per IP. Successful writes return the committed public message and are also broadcast over Socket.IO.
 
 ## Moderation
 
@@ -160,6 +122,18 @@ New messages are `published` by default. The data model also supports `hidden` p
 The repository intentionally does not add an admin UI to an archived public project. See `docs/OPERATIONS.md` for the manual moderation baseline and the recommended path if active moderation is ever needed.
 
 ## Testing
+
+Type-check the React frontend:
+
+```bash
+npm run typecheck
+```
+
+Build production bundles:
+
+```bash
+npm run build
+```
 
 Backend/integration suite:
 
@@ -174,39 +148,58 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-All tests:
+The E2E suite covers the landing flow, message publishing, Socket.IO delivery between two browser pages, incremental cursor history, and a mobile viewport.
 
-```bash
-npm run test:all
-```
+## Automated dependency maintenance
 
-CI runs backend tests, Chromium E2E tests, and `npm audit --audit-level=high`.
+Dependabot checks npm dependencies and GitHub Actions weekly. Related packages are grouped to reduce version skew:
+
+- React / ReactDOM / React types
+- Socket.IO server + client
+- Vite / React SWC plugin / TypeScript
+- browser legacy tooling
+- test tooling
+
+Low-risk patch/minor updates may merge automatically only after the complete CI gate succeeds. Major updates remain manual. `@vitejs/plugin-legacy` is more conservative: only patch updates are eligible for automatic merge because minor releases can change browser-support/runtime details and CSP hashes.
 
 ## Project structure
 
 ```text
-public/                  Static assets and browser JavaScript
-views/                   EJS templates
+frontend/
+├── index.html
+├── tsconfig.json
+└── src/
+    ├── components/
+    ├── hooks/
+    ├── lib/
+    ├── pages/
+    ├── styles/
+    ├── types/
+    ├── App.tsx
+    └── main.tsx
+public/
+└── assets/img/          Original image assets
+scripts/
+└── verify-frontend-build.mjs
 docs/
-├── ARCHITECTURE.md      Architecture decisions and scaling path
-└── OPERATIONS.md        Deployment, health, backup and incident guidance
+├── ARCHITECTURE.md
+└── OPERATIONS.md
 src/
-├── app.js               Express composition
-├── server.js            Explicit startup + graceful shutdown
-├── config/              Environment configuration and shared limits
-├── controllers/         Message application operations
-├── errors/              Typed application errors
-├── http/                API response helpers
-├── middleware/          Request context and rate limiting
-├── models/              MongoDB models/indexes
-├── routes/              Web, API and operations routes
-├── services/            Database, realtime and metrics services
-└── utils/               Cursor encoding/decoding
+├── app.js
+├── server.js
+├── config/
+├── controllers/
+├── errors/
+├── http/
+├── middleware/
+├── models/
+├── routes/
+├── services/
+└── utils/
 __tests__/
-├── e2e/                 Playwright browser tests
-└── *.test.js            Jest/Supertest integration tests
+├── e2e/
+└── *.test.js
+vite.config.ts
 ```
 
-## Historical note
-
-The original project was created after university with a focus on programming and visual design. The present cleanup is intentionally retrospective: it keeps the original idea and technology recognizable while documenting the reliability, security, data, testing, and operational concerns that were learned later.
+`dist/` is generated and intentionally not committed.
