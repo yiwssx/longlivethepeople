@@ -15,11 +15,8 @@ test.beforeAll(async () => {
     process.env.MESSAGE_RATE_LIMIT_MAX = '1000';
     process.env.MESSAGE_READ_RATE_LIMIT_MAX = '1000';
 
-    // Environment must be configured before loading application modules.
-    // eslint-disable-next-line global-require
-    const { startServer } = require('../../apps/server/src/server');
-    // eslint-disable-next-line global-require
-    Message = require('../../apps/server/src/modules/messages/message.model');
+    const { startServer } = await import('../../apps/server/src/server.ts');
+    ({ default: Message } = await import('../../apps/server/src/modules/messages/message.model.ts'));
 
     runtime = await startServer({ port: 0, registerSignalHandlers: false });
     baseUrl = `http://127.0.0.1:${runtime.port}`;
@@ -30,12 +27,8 @@ test.afterEach(async () => {
 });
 
 test.afterAll(async () => {
-    if (runtime) {
-        await runtime.shutdown('playwright');
-    }
-    if (mongo) {
-        await mongo.stop();
-    }
+    if (runtime) await runtime.shutdown('playwright');
+    if (mongo) await mongo.stop();
 });
 
 const messageBox = (page) => page.getByRole('textbox', {
@@ -45,7 +38,6 @@ const messageBox = (page) => page.getByRole('textbox', {
 
 test('visitor can enter the archive and publish a message', async ({ page }) => {
     await page.goto(baseUrl);
-
     await expect(page).toHaveTitle('ระบบไว้อาลัยเหตุการณ์โควิด-19');
     await page.getByRole('link', { name: /ร่วมแสดงความเสียใจ/ }).click();
     await expect(page).toHaveURL(`${baseUrl}/memorial`);
@@ -78,7 +70,6 @@ test('Socket.IO broadcasts a committed message to another connected visitor', as
     const received = receiver.locator('.message-card').filter({ hasText: 'ข้อความ realtime ข้าม browser' });
     await expect(received).toHaveCount(1);
     await expect(received).toContainText('Realtime Sender::Archive');
-
     await context.close();
 });
 
@@ -100,9 +91,7 @@ test('cursor pagination loads the complete archive without duplicates', async ({
 
     await expect.poll(async () => {
         const count = await cards.count();
-        if (count < 125) {
-            await page.locator('#feed-sentinel').scrollIntoViewIfNeeded();
-        }
+        if (count < 125) await page.locator('#feed-sentinel').scrollIntoViewIfNeeded();
         return count;
     }).toBe(125);
 
