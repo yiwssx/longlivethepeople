@@ -1,9 +1,12 @@
 // Centralized configuration object that reads from environment variables.
+const fs = require('fs');
+const path = require('path');
 const messageLimits = require('./message-limits');
 
 const DEFAULT_MONGODB_URI = 'mongodb://localhost:27017/test';
 const env = process.env.NODE_ENV || 'development';
 const isProduction = env === 'production';
+const frontendDistPath = path.resolve(__dirname, '../../dist/client');
 
 const parsePositiveInteger = (value, fallback) => {
     const parsed = Number.parseInt(value, 10);
@@ -13,7 +16,12 @@ const parsePositiveInteger = (value, fallback) => {
 const parseOrigins = (value) => {
     if (!value) {
         return env === 'development'
-            ? ['http://localhost:3000', 'http://127.0.0.1:3000']
+            ? [
+                'http://localhost:3000',
+                'http://127.0.0.1:3000',
+                'http://localhost:5173',
+                'http://127.0.0.1:5173',
+            ]
             : [];
     }
 
@@ -36,6 +44,18 @@ const parseTrustProxy = (value) => {
     return Number.isInteger(numeric) && numeric >= 0 ? numeric : value;
 };
 
+const loadLegacyCspHashes = () => {
+    try {
+        const manifestPath = path.resolve(__dirname, '../../dist/legacy-csp.json');
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        return Array.isArray(manifest.scriptSrc)
+            ? manifest.scriptSrc.filter((value) => typeof value === 'string' && value.startsWith("'sha256-"))
+            : [];
+    } catch {
+        return [];
+    }
+};
+
 if (isProduction && !process.env.MONGODB_URI) {
     throw new Error('Missing required production environment variable: MONGODB_URI');
 }
@@ -55,6 +75,10 @@ const config = {
                 5_000,
             ),
         },
+    },
+    frontend: {
+        distPath: frontendDistPath,
+        indexPath: path.join(frontendDistPath, 'index.html'),
     },
     http: {
         bodyLimit: process.env.BODY_LIMIT || '16kb',
@@ -79,8 +103,6 @@ const config = {
     metrics: {
         token: process.env.METRICS_TOKEN || '',
     },
-    // Keep the CSP intentionally narrow. The only third-party frontend resource
-    // retained by the archive is the Google Fonts stylesheet/font files.
     cspRule: {
         contentSecurityPolicy: {
             directives: {
@@ -89,7 +111,7 @@ const config = {
                 fontSrc: ["'self'", 'https://fonts.gstatic.com'],
                 imgSrc: ["'self'"],
                 objectSrc: ["'none'"],
-                scriptSrc: ["'self'"],
+                scriptSrc: ["'self'", ...loadLegacyCspHashes()],
                 styleSrc: ["'self'", 'https://fonts.googleapis.com'],
                 frameSrc: ["'none'"],
                 mediaSrc: ["'self'"],

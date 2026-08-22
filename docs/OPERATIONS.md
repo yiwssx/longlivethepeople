@@ -11,7 +11,18 @@ Required in production:
 - `NODE_ENV=production`
 - `MONGODB_URI=<managed-or-backed-up-mongodb-uri>`
 
-Optional:
+The React frontend must be built before the production Node process starts:
+
+```bash
+npm ci
+npm run typecheck
+npm run build
+NODE_ENV=production MONGODB_URI='<uri>' npm start
+```
+
+`npm run build` writes the production application to `dist/client/` and writes the legacy-runtime CSP digests to `dist/legacy-csp.json`. These files are generated deployment artifacts and are intentionally not committed. A deployment must build them from the same locked dependency graph that it runs.
+
+Optional runtime configuration:
 
 - `PORT` — default `3000`
 - `TRUST_PROXY` — default `false`; use `1` only behind exactly one trusted proxy hop
@@ -29,6 +40,12 @@ Optional:
 - `METRICS_TOKEN` — enables authenticated `/metrics` when set
 
 Do not expose the application directly to the Internet with `TRUST_PROXY` enabled. A client that can bypass the trusted proxy could forge forwarding headers and undermine IP-based controls.
+
+## Frontend build integrity
+
+CI type-checks React/TypeScript, creates both modern and legacy Vite bundles, and verifies that the generated CSP manifest matches the installed `@vitejs/plugin-legacy` runtime hashes. The production build should never be edited manually after this validation.
+
+The legacy bundle is a compatibility path, not a second application. Both browser paths execute the same React source and use the same REST/Socket.IO backend.
 
 ## Health checks
 
@@ -127,6 +144,10 @@ The repository's default architecture expects one Node process. Multiple replica
 
 If multiple replicas are genuinely needed, add shared rate-limit storage and a shared Socket.IO pub/sub adapter before treating the topology as fully horizontally scalable.
 
+## Dependency maintenance
+
+Dependabot groups dependencies that should move together. Auto-merge remains conditional on the complete CI gate, and major updates stay manual. Browser-compatibility tooling is intentionally more conservative: `@vitejs/plugin-legacy` minor and major updates require review even if CI succeeds.
+
 ## Incident checklist
 
 If the application reports elevated errors:
@@ -135,6 +156,7 @@ If the application reports elevated errors:
 2. correlate errors using `X-Request-Id` in JSON logs;
 3. check MongoDB availability/latency;
 4. inspect rate-limit and 4xx/5xx counters;
-5. verify edge/proxy forwarding configuration;
-6. if data integrity is uncertain, stop writes before attempting repair;
-7. restore only from a verified backup and validate with tests before reopening traffic.
+5. verify frontend build artifacts and CSP if browser assets fail to execute;
+6. verify edge/proxy forwarding configuration;
+7. if data integrity is uncertain, stop writes before attempting repair;
+8. restore only from a verified backup and validate with tests before reopening traffic.

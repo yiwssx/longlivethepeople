@@ -33,21 +33,31 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Mark patch and minor updates for automatic merge
+      - name: Mark verified low-risk updates for automatic merge
         uses: actions/github-script@v8
         env:
           UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+          DEPENDENCY_NAMES: ${{ steps.metadata.outputs.dependency-names }}
         with:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const issue_number = context.issue.number;
             const label = 'dependencies-automerge';
+            const updateType = process.env.UPDATE_TYPE || '';
+            const dependencyNames = process.env.DEPENDENCY_NAMES || '';
             const safeTypes = new Set([
               'version-update:semver-patch',
               'version-update:semver-minor',
             ]);
-            const isSafeUpdate = safeTypes.has(process.env.UPDATE_TYPE);
+
+            // @vitejs/plugin-legacy embeds fixed inline runtime snippets. Patch
+            // releases can merge automatically because CI verifies generated CSP
+            // hashes. Minor releases remain manual so browser-support changes get
+            // an explicit review even when the build is green.
+            const legacyPluginMinor = dependencyNames.includes('@vitejs/plugin-legacy')
+              && updateType === 'version-update:semver-minor';
+            const isSafeUpdate = safeTypes.has(updateType) && !legacyPluginMinor;
 
             if (isSafeUpdate) {
               try {
@@ -59,7 +69,7 @@ jobs:
                   repo,
                   name: label,
                   color: '0E8A16',
-                  description: 'Auto-merge Dependabot patch/minor updates after CI passes',
+                  description: 'Auto-merge verified low-risk Dependabot updates after CI passes',
                 });
               }
 
@@ -69,7 +79,7 @@ jobs:
                 issue_number,
                 labels: [label],
               });
-              core.notice(`Marked ${process.env.UPDATE_TYPE} for auto-merge after CI.`);
+              core.notice(`Marked ${updateType} for auto-merge after CI.`);
               return;
             }
 
@@ -84,7 +94,7 @@ jobs:
               if (error.status !== 404) throw error;
             }
 
-            core.notice(`Leaving ${process.env.UPDATE_TYPE || 'unknown update type'} for manual review.`);
+            core.notice(`Leaving ${updateType || 'unknown update type'} for manual review.`);
 
   merge:
     name: Merge verified Dependabot update
@@ -96,7 +106,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Merge only a verified patch/minor Dependabot PR
+      - name: Merge only a verified Dependabot PR
         uses: actions/github-script@v8
         with:
           script: |
