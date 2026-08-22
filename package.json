@@ -11,7 +11,7 @@
     "ejs": "^5.0.2",
     "express": "^5.2.1",
     "helmet": "^8.3.0",
-    "mongoose": "^9.7.2",
+    "mongoose": "^9.9.3",
     "serve-favicon": "^2.5.1",
     "socket.io": "^4.8.3"
   },
