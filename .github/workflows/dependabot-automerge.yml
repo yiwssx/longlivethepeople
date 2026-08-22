@@ -1,0 +1,142 @@
+name: Dependabot auto-merge
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  classify:
+    name: Classify Dependabot update
+    if: >-
+      github.event_name == 'pull_request_target' &&
+      github.actor == 'dependabot[bot]' &&
+      github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Read Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Mark patch and minor updates for automatic merge
+        uses: actions/github-script@v8
+        env:
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issue_number = context.issue.number;
+            const label = 'dependencies-automerge';
+            const safeTypes = new Set([
+              'version-update:semver-patch',
+              'version-update:semver-minor',
+            ]);
+            const isSafeUpdate = safeTypes.has(process.env.UPDATE_TYPE);
+
+            if (isSafeUpdate) {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name: label });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                await github.rest.issues.createLabel({
+                  owner,
+                  repo,
+                  name: label,
+                  color: '0E8A16',
+                  description: 'Auto-merge Dependabot patch/minor updates after CI passes',
+                });
+              }
+
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number,
+                labels: [label],
+              });
+              core.notice(`Marked ${process.env.UPDATE_TYPE} for auto-merge after CI.`);
+              return;
+            }
+
+            try {
+              await github.rest.issues.removeLabel({
+                owner,
+                repo,
+                issue_number,
+                name: label,
+              });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+
+            core.notice(`Leaving ${process.env.UPDATE_TYPE || 'unknown update type'} for manual review.`);
+
+  merge:
+    name: Merge verified Dependabot update
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.actor.login == 'dependabot[bot]' &&
+      github.event.workflow_run.pull_requests[0] != null
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Merge only a verified patch/minor Dependabot PR
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const run = context.payload.workflow_run;
+            const prNumber = run.pull_requests[0].number;
+            const autoMergeLabel = 'dependencies-automerge';
+
+            const { data: pr } = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: prNumber,
+            });
+
+            const labels = new Set(pr.labels.map((label) => label.name));
+            const isDependabot = pr.user?.login === 'dependabot[bot]';
+            const isDependabotBranch = pr.head?.ref?.startsWith('dependabot/');
+            const isSameRepository = pr.head?.repo?.full_name === `${owner}/${repo}`;
+            const targetsMain = pr.base?.ref === 'main';
+            const isOpen = pr.state === 'open' && !pr.draft;
+            const isMarkedSafe = labels.has(autoMergeLabel);
+
+            if (!isDependabot || !isDependabotBranch || !isSameRepository || !targetsMain || !isOpen || !isMarkedSafe) {
+              core.notice(`PR #${prNumber} did not satisfy the Dependabot auto-merge policy.`);
+              return;
+            }
+
+            const result = await github.rest.pulls.merge({
+              owner,
+              repo,
+              pull_number: prNumber,
+              merge_method: 'squash',
+              sha: pr.head.sha,
+              commit_title: `${pr.title} (#${prNumber})`,
+            });
+
+            if (!result.data.merged) {
+              core.setFailed(`GitHub refused to merge PR #${prNumber}: ${result.data.message}`);
+              return;
+            }
+
+            core.notice(`Merged Dependabot PR #${prNumber} after CI passed.`);
