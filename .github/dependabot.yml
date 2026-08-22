@@ -31,7 +31,7 @@ updates:
       vite-toolchain:
         patterns:
           - "vite"
-          - "@vitejs/plugin-react"
+          - "@vitejs/plugin-react-swc"
           - "typescript"
         update-types:
           - minor

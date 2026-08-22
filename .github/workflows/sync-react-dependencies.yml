@@ -36,7 +36,7 @@ jobs:
           npm install react@latest react-dom@latest socket.io-client@^4.8.3
 
       - name: Install frontend development toolchain
-        run: npm install --save-dev vite@latest @vitejs/plugin-react@latest @vitejs/plugin-legacy@latest typescript@latest @types/react@latest @types/react-dom@latest concurrently@latest
+        run: npm install --save-dev vite@latest @vitejs/plugin-react-swc@latest @vitejs/plugin-legacy@latest typescript@latest @types/react@latest @types/react-dom@latest concurrently@latest
 
       - name: Update package scripts
         run: |
