@@ -1,6 +1,9 @@
 version: 2
 
 updates:
+  # npm workspaces share one root lockfile. Keep discovery at the repository root
+  # so dependencies that span workspaces (notably Socket.IO client/server) can be
+  # upgraded and verified together in a single PR.
   - package-ecosystem: npm
     directory: "/"
     schedule:
@@ -47,6 +50,14 @@ updates:
           - "supertest"
           - "@playwright/test"
           - "mongodb-memory-server"
+        update-types:
+          - minor
+          - patch
+      dev-orchestration:
+        patterns:
+          - "concurrently"
+          - "cross-env"
+          - "nodemon"
         update-types:
           - minor
           - patch
