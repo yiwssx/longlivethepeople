@@ -15,7 +15,7 @@ test.beforeAll(async () => {
     process.env.MESSAGE_RATE_LIMIT_MAX = '1000';
     process.env.MESSAGE_READ_RATE_LIMIT_MAX = '1000';
 
-    const { startServer } = await import('../../apps/server/src/server.ts');
+    const { startServer } = await import('../../apps/server/src/main.ts');
     ({ default: Message } = await import('../../apps/server/src/modules/messages/message.model.ts'));
 
     runtime = await startServer({ port: 0, registerSignalHandlers: false });

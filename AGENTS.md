@@ -7,6 +7,8 @@ This repository is an archived application maintained as a small modular monolit
 ## Server directives
 
 - Server code lives in `apps/server/src` and uses TypeScript + ESM.
+- `apps/server/src/app.ts` defines the Express HTTP application only. It may configure middleware, routes, static assets, and HTTP error handling, but it must not open a port, connect to MongoDB, start Socket.IO, register process signals, or call `process.exit()`.
+- `apps/server/src/main.ts` is the executable process entry point and runtime lifecycle owner. It connects infrastructure, creates the HTTP server, attaches Socket.IO, listens, handles process signals, and coordinates graceful shutdown. Keep `startServer()` exportable for integration/E2E tests.
 - Node.js 24 runs the server TypeScript directly. Keep runtime TypeScript limited to erasable syntax and explicit relative `.ts` imports; do not add `ts-node`, `tsx`, Babel, or another runtime transpiler without a concrete requirement.
 - Organize business code by feature under `apps/server/src/modules`. The messages feature owns its model, routes, validation, cursor logic, constants, and application service.
 - Keep HTTP routes thin: routing, middleware composition, status codes, and response mapping belong at the route boundary; persistence and application operations belong in the feature service.
