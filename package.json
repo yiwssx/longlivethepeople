@@ -23,7 +23,7 @@
   "scripts": {
     "start": "npm run start --workspace @longlivethepeople/server",
     "dev": "concurrently -k -n server,web \"npm:dev:server\" \"npm:dev:web\"",
-    "dev:server": "cross-env NODE_ENV=development nodemon --watch apps/server/src --ext ts apps/server/src/server.ts",
+    "dev:server": "cross-env NODE_ENV=development nodemon --watch apps/server/src --ext ts apps/server/src/main.ts",
     "dev:web": "npm run dev --workspace @longlivethepeople/web",
     "watch:dev": "npm run dev",
     "build": "npm run build --workspace @longlivethepeople/web",

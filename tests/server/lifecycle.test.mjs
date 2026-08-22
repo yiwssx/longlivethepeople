@@ -11,7 +11,7 @@ describe('server lifecycle', () => {
     process.env.MONGODB_URI = mongo.getUri();
     process.env.NODE_ENV = 'test';
     process.env.PORT = '0';
-    const { startServer } = await import('../../apps/server/src/server.ts');
+    const { startServer } = await import('../../apps/server/src/main.ts');
     runtime = await startServer({ port: 0, registerSignalHandlers: false });
   });
 
