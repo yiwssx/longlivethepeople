@@ -41,6 +41,14 @@ export default defineConfig({
     outDir: clientOutDir,
     emptyOutDir: true,
     sourcemap: true,
+    rolldownOptions: {
+      checks: {
+        // The legacy plugin intentionally dominates this small archive's build
+        // because it emits/transforms both the modern and legacy bundle paths.
+        // Suppress only this performance notice; keep all correctness checks.
+        pluginTimings: false,
+      },
+    },
   },
   server: {
     host: '127.0.0.1',
