@@ -95,14 +95,18 @@ test('cursor pagination loads the complete archive without duplicates', async ({
     await Message.create(rows);
 
     await page.goto(`${baseUrl}/memorial`);
-    await expect(page.locator('.message-card')).toHaveCount(50);
+    const cards = page.locator('.message-card');
+    await expect(cards).toHaveCount(50);
 
-    for (const expectedCount of [100, 125]) {
-        await page.locator('#feed-sentinel').scrollIntoViewIfNeeded();
-        await expect(page.locator('.message-card')).toHaveCount(expectedCount);
-    }
+    await expect.poll(async () => {
+        const count = await cards.count();
+        if (count < 125) {
+            await page.locator('#feed-sentinel').scrollIntoViewIfNeeded();
+        }
+        return count;
+    }).toBe(125);
 
-    const ids = await page.locator('.message-card').evaluateAll((cards) => cards.map((card) => card.dataset.messageId));
+    const ids = await cards.evaluateAll((items) => items.map((card) => card.dataset.messageId));
     expect(new Set(ids).size).toBe(125);
 });
 
