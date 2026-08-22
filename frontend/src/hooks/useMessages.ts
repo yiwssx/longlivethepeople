@@ -49,6 +49,8 @@ export function useMessages({ onLoadFailure }: UseMessagesOptions) {
       hasMoreRef.current = page.pagination.hasMore;
       setHasMore(page.pagination.hasMore);
     } catch {
+      hasMoreRef.current = false;
+      setHasMore(false);
       onLoadFailure();
     } finally {
       loadingRef.current = false;
