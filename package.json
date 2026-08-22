@@ -34,10 +34,10 @@
   },
   "nodemonConfig": {
     "watch": [
-      "src"
+      "apps/server/src"
     ],
     "ignore": [
-      "**/__tests__/**",
+      "tests/**",
       "*.test.js",
       "*.spec.js"
     ]
@@ -46,13 +46,13 @@
     "node": ">=24.0.0 <25"
   },
   "scripts": {
-    "start": "node ./src/server.js",
+    "start": "node ./apps/server/src/server.js",
     "dev": "concurrently -k -n server,client \"npm:dev:server\" \"npm:dev:client\"",
-    "dev:server": "cross-env NODE_ENV=development node ./src/server.js",
-    "dev:client": "vite",
+    "dev:server": "cross-env NODE_ENV=development node ./apps/server/src/server.js",
+    "dev:client": "vite --config apps/web/vite.config.ts",
     "watch:dev": "npm run dev",
-    "build": "vite build",
-    "typecheck": "tsc -p frontend/tsconfig.json --noEmit",
+    "build": "vite build --config apps/web/vite.config.ts",
+    "typecheck": "tsc -p apps/web/tsconfig.json --noEmit",
     "test": "cross-env NODE_ENV=test jest --runInBand",
     "test:e2e": "npm run build && cross-env NODE_ENV=test playwright test",
     "test:e2e:ci": "cross-env NODE_ENV=test playwright test",
