@@ -29,6 +29,7 @@
     "build": "npm run build --workspace @longlivethepeople/web",
     "typecheck": "npm run typecheck --workspace @longlivethepeople/server && npm run typecheck --workspace @longlivethepeople/web",
     "test": "node --test \"tests/server/**/*.test.mjs\"",
+    "test:dev": "node ./scripts/verify-dev-runtime.mjs",
     "test:e2e": "npm run build && cross-env NODE_ENV=test playwright test",
     "test:e2e:ci": "cross-env NODE_ENV=test playwright test",
     "test:all": "npm run typecheck && npm run build && npm run test && npm run test:e2e:ci"
