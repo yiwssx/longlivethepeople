@@ -12,7 +12,7 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -41,6 +41,9 @@ jobs:
 
       - name: Install Chromium
         run: npx playwright install chromium
+
+      - name: Verify development runtime
+        run: npm run test:dev
 
       - name: Run browser E2E tests
         run: npm run test:e2e:ci
