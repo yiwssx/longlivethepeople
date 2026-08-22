@@ -82,7 +82,7 @@ test('Socket.IO broadcasts a committed message to another connected visitor', as
     await context.close();
 });
 
-test('cursor pagination restores the complete archive without duplicates', async ({ page }) => {
+test('cursor pagination loads the complete archive without duplicates', async ({ page }) => {
     const baseTime = Date.parse('2026-01-01T00:00:00.000Z');
     const rows = Array.from({ length: 125 }, (_, index) => ({
         codename: `person-${index + 1}`,
@@ -95,9 +95,18 @@ test('cursor pagination restores the complete archive without duplicates', async
     await Message.create(rows);
 
     await page.goto(`${baseUrl}/memorial`);
-    await expect(page.locator('.message-card')).toHaveCount(125);
+    const cards = page.locator('.message-card');
+    await expect(cards).toHaveCount(50);
 
-    const ids = await page.locator('.message-card').evaluateAll((cards) => cards.map((card) => card.dataset.messageId));
+    await expect.poll(async () => {
+        const count = await cards.count();
+        if (count < 125) {
+            await page.locator('#feed-sentinel').scrollIntoViewIfNeeded();
+        }
+        return count;
+    }).toBe(125);
+
+    const ids = await cards.evaluateAll((items) => items.map((card) => card.dataset.messageId));
     expect(new Set(ids).size).toBe(125);
 });
 
