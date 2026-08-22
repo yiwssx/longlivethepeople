@@ -14,6 +14,7 @@ const messageRoutes = require('./routes/message.route');
 
 const app = express();
 const isProduction = config.env === 'production';
+const publicPath = path.resolve(__dirname, '../public');
 
 app.set('trust proxy', config.trustProxy);
 app.use(requestContext);
@@ -27,16 +28,14 @@ if (config.cors.origins.length > 0) {
     app.use(cors({ origin: config.cors.origins }));
 }
 
-app.set('view engine', 'ejs');
-app.set('views', path.resolve(__dirname, '../views'));
-app.use(express.static(path.resolve(__dirname, '../public'), { index: false }));
-app.use(favicon(path.resolve(__dirname, '../public/assets/img/favicon.ico')));
+app.use(express.static(config.frontend.distPath, { index: false }));
+app.use(express.static(publicPath, { index: false }));
+app.use(favicon(path.join(publicPath, 'assets/img/favicon.ico')));
 
 // Health endpoints do not depend on request-body parsing or application state.
 app.use(healthRoutes);
 
-// Web routes are intentionally stateless. The original session gate was only a
-// splash-screen acknowledgement and was not an authorization boundary.
+// Web routes serve the Vite-built React application and remain stateless.
 app.use('/', indexRoutes);
 
 // API routes own their request parsing and validation so HTML/form traffic does
