@@ -81,7 +81,7 @@ The server lives under `apps/server/src` and is organized around feature ownersh
 ```text
 apps/server/src/
 ├── app.ts
-├── server.ts
+├── main.ts
 ├── config/
 ├── http/
 ├── infrastructure/
@@ -92,6 +92,10 @@ apps/server/src/
 ├── routes/
 └── types/
 ```
+
+`app.ts` defines the HTTP application only: Express configuration, middleware, static assets, routes, fallback behavior, and HTTP error handling. Importing it must not open a port, connect to MongoDB, start Socket.IO, register process signals, or terminate the process.
+
+`main.ts` is the executable process entry point and lifecycle owner. It connects MongoDB, creates the Node HTTP server around the Express app, attaches Socket.IO, starts listening, registers `SIGTERM`/`SIGINT` handlers, and coordinates graceful shutdown. It exports `startServer()` so integration/E2E tests can start the real runtime on an ephemeral port without production signal handlers.
 
 `modules/messages` owns the message model, routes, validation, cursor encoding, limits/constants, and application service. Shared runtime concerns are separated by responsibility: MongoDB and Socket.IO live under `infrastructure`, counters under `observability`, shared API errors/responses under `http`, and Express middleware under `middleware`.
 
