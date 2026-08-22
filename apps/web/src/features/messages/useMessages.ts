@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { io } from 'socket.io-client';
 import { getMessages } from './api';
+import { acquireMessageSocket, releaseMessageSocket } from './socket';
 import type { MessageRecord } from './types';
 
 const HEALING_REFRESH_MS = 30_000;
@@ -82,17 +82,25 @@ export function useMessages({ onLoadFailure }: UseMessagesOptions) {
   }, [loadMore]);
 
   useEffect(() => {
-    const socket = io({ autoConnect: false });
+    const socket = acquireMessageSocket();
+    const handleConnect = () => void refreshLatest();
+
     socket.on('message', prependMessage);
-    socket.on('connect', () => void refreshLatest());
-    socket.connect();
+    socket.on('connect', handleConnect);
+
+    if (socket.connected) {
+      void refreshLatest();
+    } else if (!socket.active) {
+      socket.connect();
+    }
 
     const refreshTimer = window.setInterval(() => void refreshLatest(), HEALING_REFRESH_MS);
 
     return () => {
       window.clearInterval(refreshTimer);
       socket.off('message', prependMessage);
-      socket.disconnect();
+      socket.off('connect', handleConnect);
+      releaseMessageSocket();
     };
   }, [prependMessage, refreshLatest]);
 
