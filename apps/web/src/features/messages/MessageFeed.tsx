@@ -46,8 +46,8 @@ export default function MessageFeed({ messages, hasMore, loading, loadMore }: Me
             <p className="message-text">{message.message}</p>
           </article>
         ))}
+        <div id="feed-sentinel" className="feed-sentinel" ref={sentinelRef} aria-hidden="true" />
       </div>
-      <div id="feed-sentinel" className="feed-sentinel" ref={sentinelRef} aria-hidden="true" />
     </section>
   );
 }
