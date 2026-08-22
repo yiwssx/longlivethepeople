@@ -12,6 +12,7 @@
   "allowScripts": {
     "@swc/core": true,
     "core-js": false,
+    "fsevents": false,
     "mongodb-memory-server": true
   },
   "devDependencies": {
