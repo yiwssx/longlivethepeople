@@ -34,7 +34,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Mark patch and minor updates for automatic merge
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
         with:
@@ -97,7 +97,7 @@ jobs:
 
     steps:
       - name: Merge only a verified patch/minor Dependabot PR
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const owner = context.repo.owner;
