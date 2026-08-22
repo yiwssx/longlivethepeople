@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+
 export type DialogState = {
   title: string;
   text: string;
@@ -10,18 +12,26 @@ type ArchiveDialogProps = {
 };
 
 export default function ArchiveDialog({ dialog, onDismiss }: ArchiveDialogProps) {
-  if (!dialog) return null;
-
   const close = () => {
+    if (!dialog) return;
     const afterClose = dialog.onClose;
     onDismiss();
     afterClose?.();
   };
 
+  useEffect(() => {
+    if (!dialog) return undefined;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') close();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [dialog]);
+
+  if (!dialog) return null;
+
   return (
-    <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) close();
-    }}>
+    <div className="dialog-backdrop" role="presentation">
       <section className="archive-dialog" role="dialog" aria-modal="true" aria-labelledby="archive-dialog-title">
         <h2 id="archive-dialog-title">{dialog.title}</h2>
         <p>{dialog.text}</p>
