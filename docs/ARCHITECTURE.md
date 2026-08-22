@@ -2,9 +2,21 @@
 
 ## Status
 
-This repository is an archived university-era project that has been deliberately modernized without changing its original purpose. The original implementation used EJS and vanilla JavaScript because the project was time-constrained, although React was the intended frontend direction. The restoration now completes that frontend direction while retaining the existing Express, MongoDB, and Socket.IO backend.
+This repository is an archived university-era project that has been deliberately modernized without changing its original purpose. The original implementation used EJS and vanilla JavaScript because the project was time-constrained, although React was the intended frontend direction. The restoration now completes that frontend direction and reorganizes the server into explicit feature and infrastructure boundaries while preserving the Express, MongoDB, and Socket.IO runtime model.
 
 It remains a **modular monolith**. Splitting this archive into microservices, adding a queue, or requiring Redis/Kubernetes would increase operational complexity without proportional value.
+
+## Repository boundaries
+
+The repository uses npm workspaces to make dependency ownership explicit while retaining one root lockfile:
+
+- `apps/web` owns the React/Vite browser application and `socket.io-client`.
+- `apps/server` owns the Express/Mongoose/Socket.IO server.
+- `tests/server` contains Node `node:test` unit/integration coverage.
+- `tests/e2e` contains Playwright browser coverage.
+- root scripts orchestrate development, typechecking, build, tests, and CI as one deployable system.
+
+The server is TypeScript + ESM. Node.js 24 executes its erasable TypeScript directly, so production does not require `ts-node`, `tsx`, Babel, or a server transpilation step. `tsc --noEmit` is the static type gate.
 
 ## Runtime topology
 
@@ -35,17 +47,18 @@ Browser
 
 MongoDB is the source of truth. Socket.IO is an acceleration path for realtime display; the browser periodically re-reads the newest database page so a missed socket event does not create permanent divergence.
 
-## Frontend boundary
+## Web application boundary
 
-The browser application lives under `frontend/` and is built by Vite.
+The browser application lives under `apps/web` and is built by Vite.
 
-- React owns rendering and UI state.
-- TypeScript defines the message/API contracts.
-- `socket.io-client` connects to the existing Socket.IO server.
-- The POST response is the source of truth for the sending browser; Socket.IO provides realtime fan-out to other connected clients.
-- Stable message IDs make REST and realtime delivery idempotent in the UI.
-- Older history uses the existing opaque cursor and is loaded incrementally with `IntersectionObserver`; browsers without that API fall back to progressive automatic loading.
-- A periodic database refresh repairs missed realtime events.
+- `src/app` owns bootstrap and the intentionally small two-route navigation layer.
+- `src/pages` owns route-level composition.
+- `src/features/messages` owns message API types, client calls, realtime state, form behavior, and feed rendering.
+- `src/shared` contains genuinely reusable UI such as the archive dialog.
+- `src/styles` contains global styling.
+- `public` owns the original static image assets.
+
+React owns rendering and UI state. The POST response is the source of truth for the sending browser; Socket.IO provides realtime fan-out to other connected clients. Stable message IDs make REST and realtime delivery idempotent in the UI. Older history uses the opaque cursor and is loaded incrementally with `IntersectionObserver`; browsers without that API fall back to progressive automatic loading. A periodic database refresh repairs missed realtime events.
 
 No global browser libraries, inline application scripts, Redux, React Router, Tailwind, or frontend data framework are required for this two-route application.
 
@@ -60,6 +73,29 @@ The original `POST /` redirect remains for historical bookmark/form compatibilit
 Vite emits hashed production assets under `dist/client/`. `@vitejs/plugin-legacy` also emits a legacy SystemJS/polyfill path for the configured browser baseline (Chrome/Edge 80+, Firefox 78+, Safari/iOS 13+). Internet Explorer is intentionally unsupported.
 
 The legacy plugin requires a small set of fixed inline runtime snippets. Their CSP digests are imported from the installed plugin during every build and written to `dist/legacy-csp.json`. Express loads those generated hashes into Helmet's `script-src`, so legacy-tooling updates do not require hand-maintained CSP hashes.
+
+## Server application boundary
+
+The server lives under `apps/server/src` and is organized around feature ownership instead of generic MVC buckets.
+
+```text
+apps/server/src/
+├── app.ts
+├── server.ts
+├── config/
+├── http/
+├── infrastructure/
+├── middleware/
+├── modules/
+│   └── messages/
+├── observability/
+├── routes/
+└── types/
+```
+
+`modules/messages` owns the message model, routes, validation, cursor encoding, limits/constants, and application service. Shared runtime concerns are separated by responsibility: MongoDB and Socket.IO live under `infrastructure`, counters under `observability`, shared API errors/responses under `http`, and Express middleware under `middleware`.
+
+The HTTP route layer is intentionally thin. External input is normalized and validated at the boundary; persistence/application operations remain in the message service. A repository/DI abstraction layer is deliberately avoided because it would add indirection without useful substitution needs for this archive.
 
 ## API layer
 
@@ -76,7 +112,7 @@ The model supports `published` and `hidden` moderation states. Historical docume
 
 ## Realtime layer
 
-Socket.IO publishes newly committed messages. The server and browser client dependencies are maintained as a Dependabot group to reduce protocol-version skew. The default supported topology is one Node.js application instance.
+Socket.IO publishes newly committed messages. The server and browser client dependencies are maintained as one Dependabot group to reduce protocol-version skew. The default supported topology is one Node.js application instance.
 
 If the archive is horizontally scaled, use a shared Socket.IO adapter/pub-sub layer and a distributed rate-limit store, or replace realtime delivery with a database-backed/edge-friendly mechanism.
 
@@ -84,13 +120,14 @@ If the archive is horizontally scaled, use a shared Socket.IO adapter/pub-sub la
 
 Production preparation is:
 
-1. install locked dependencies;
-2. build the Vite frontend and generated CSP manifest;
-3. validate configuration;
-4. connect to MongoDB;
-5. create the HTTP server;
-6. attach Socket.IO;
-7. listen for traffic.
+1. install locked workspace dependencies;
+2. type-check both applications;
+3. build the Vite frontend and generated CSP manifest;
+4. validate runtime configuration;
+5. connect to MongoDB;
+6. create the HTTP server;
+7. attach Socket.IO;
+8. listen for traffic.
 
 Operational endpoints:
 
@@ -124,16 +161,16 @@ If private access is ever required, add real authentication/authorization rather
 CI validates the frontend and backend as one deployment unit:
 
 1. `npm ci`;
-2. TypeScript typecheck;
+2. `tsc --noEmit` for the server and web application;
 3. Vite modern + legacy production build;
 4. generated frontend/CSP verification;
-5. Jest + Supertest + MongoMemoryServer backend/integration tests;
+5. Node `node:test` + Supertest + MongoMemoryServer server/integration tests;
 6. Playwright + Chromium browser tests, including Socket.IO delivery between two pages and cursor history loading;
 7. `npm audit --audit-level=high`.
 
 ## Dependency maintenance
 
-Dependabot groups packages that should move together, including React, Socket.IO server/client, and the Vite toolchain. Patch/minor updates can be automatically merged only after the full CI gate passes. Major updates remain manual. `@vitejs/plugin-legacy` minor/major changes are also manual because they may change browser compatibility and inline runtime behavior.
+Dependabot runs at the npm workspace root so packages that span applications can still move together. It groups React packages, Socket.IO server/client, the Vite/TypeScript toolchain, server type packages, test tooling, and development orchestration dependencies. Patch/minor updates can be automatically merged only after the full CI gate passes. Major updates remain manual. `@vitejs/plugin-legacy` minor/major changes are also manual because they may change browser compatibility and inline runtime behavior.
 
 ## Scaling path (not required for the archive)
 

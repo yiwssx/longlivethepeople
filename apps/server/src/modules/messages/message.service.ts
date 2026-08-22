@@ -1,4 +1,4 @@
-import type { FilterQuery } from 'mongoose';
+import type { QueryFilter } from 'mongoose';
 import database from '../../infrastructure/database.ts';
 import realtime from '../../infrastructure/realtime.ts';
 import metrics from '../../observability/metrics.ts';
@@ -33,8 +33,8 @@ export const toPublicMessage = (message: {
   createdAt: new Date(message.createdAt).toISOString(),
 });
 
-const buildCursorFilter = (cursor: MessageCursor | null): FilterQuery<MessageDocumentShape> => {
-  const visibilityFilter: FilterQuery<MessageDocumentShape> = {
+const buildCursorFilter = (cursor: MessageCursor | null): QueryFilter<MessageDocumentShape> => {
+  const visibilityFilter: QueryFilter<MessageDocumentShape> = {
     status: { $in: ['published', null] },
   };
 

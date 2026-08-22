@@ -2,51 +2,52 @@
 
 An archived university-era memorial web application built with Node.js, Express, React, TypeScript, Vite, MongoDB, and Socket.IO.
 
-This repository is preserved as an **archive project**. The original implementation was completed under a tight deadline after university. React was the intended frontend direction, but the available time favored an EJS/vanilla-JavaScript implementation. The later restoration keeps the original purpose, wording, imagery, API, and backend recognizable while completing that intended React frontend and applying engineering practices learned afterward.
+This repository is preserved as an **archive project**. The original implementation was completed under a tight deadline after university. React was the intended frontend direction, but the available time favored EJS and vanilla JavaScript. The later restoration keeps the original purpose, wording, imagery, database compatibility, and public behavior while completing the intended React frontend and reorganizing the codebase around clearer application and feature boundaries.
 
-## Current architecture
+## Architecture
 
-The application remains a modular monolith:
+The application remains a small modular monolith with two npm workspaces:
 
-- React + TypeScript provide the browser UI.
-- Vite builds modern and legacy browser bundles.
-- Express serves the production frontend and message API.
+- `apps/web` — React + TypeScript frontend built by Vite.
+- `apps/server` — TypeScript + ESM Express/MongoDB/Socket.IO server.
+- one root `package-lock.json` keeps the deployment dependency graph reproducible.
+- Node.js 24 executes the server's erasable TypeScript directly; no runtime transpiler is required.
 - MongoDB is the source of truth for messages.
 - Socket.IO delivers committed messages in realtime.
-- The frontend periodically refreshes the newest database page to heal missed realtime events.
-- Cursor pagination loads older history incrementally instead of downloading the entire archive at startup.
-- The web layer is stateless.
+- the browser periodically refreshes the newest page to heal missed realtime events.
+- opaque cursor pagination loads older history incrementally.
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for design rationale and [`docs/OPERATIONS.md`](docs/OPERATIONS.md) for deployment, backup, moderation, and recovery guidance.
 
 ## Requirements
 
-- Node.js 24 LTS (`>=24.0.0 <25`)
+- Node.js 24 (`>=24.0.0 <25`)
+- npm 11+
 - MongoDB for local/deployed runtime
 
-Tests use `mongodb-memory-server`, so a separate MongoDB installation is not required for the automated test suites.
+Automated tests use `mongodb-memory-server`, so a separate MongoDB instance is not required for CI.
 
 ## Development
 
-Install the locked dependency graph:
+Install the locked workspace dependency graph:
 
 ```bash
 npm ci
 ```
 
-Start Express and the Vite development server together:
+Start the server and Vite development server together:
 
 ```bash
 npm run dev
 ```
 
-Development uses:
+Development endpoints:
 
 - React/Vite: `http://127.0.0.1:5173`
 - Express/API/Socket.IO: `http://127.0.0.1:3000`
 - MongoDB default: `mongodb://localhost:27017/test`
 
-Vite proxies API and Socket.IO requests to Express, so normal browser development happens through port `5173` with hot module replacement.
+Vite proxies API and Socket.IO traffic to Express, so browser development happens through port `5173` with HMR.
 
 ## Production
 
@@ -54,6 +55,7 @@ Build the frontend before starting the Node process:
 
 ```bash
 npm ci
+npm run typecheck
 npm run build
 NODE_ENV=production \
 MONGODB_URI='mongodb://user:password@mongodb:27017/longlivethepeople' \
@@ -80,7 +82,7 @@ Common environment variables:
 - `SHUTDOWN_TIMEOUT_MS` — default `10000`
 - `METRICS_TOKEN` — enables bearer-protected `/metrics` when configured
 
-Do not enable `TRUST_PROXY` if untrusted clients can bypass the trusted reverse proxy and connect to the Node process directly.
+Do not enable `TRUST_PROXY` if untrusted clients can bypass the trusted reverse proxy and connect to Node directly.
 
 ## Browser compatibility
 
@@ -92,7 +94,7 @@ The production build contains both modern ESM and legacy SystemJS/polyfill bundl
 - Safari 13+
 - iOS Safari 13+
 
-Internet Explorer is not supported. CI verifies that both modern and legacy bundles are emitted and that the strict CSP hashes generated for `@vitejs/plugin-legacy` match the installed plugin version.
+Internet Explorer is not supported. CI verifies that both bundle paths are emitted and that the strict CSP hashes generated for `@vitejs/plugin-legacy` match the installed plugin version.
 
 ## Operational endpoints
 
@@ -113,35 +115,35 @@ Public message records expose `id`, `codename`, `affiliation`, `message`, and `c
 
 ### `POST /api/v1/messages`
 
-Accepts `application/json` only with required `codename`, `affiliation`, and `message` fields. Requests are size-limited, validated, and rate-limited per IP. Successful writes return the committed public message and are also broadcast over Socket.IO.
+Accepts `application/json` only with required `codename`, `affiliation`, and `message` fields. Requests are size-limited, validated, and rate-limited per IP. Successful writes return the committed public message and are broadcast over Socket.IO.
 
 ## Moderation
 
-New messages are `published` by default. The data model also supports `hidden` plus `hiddenAt`; public reads omit hidden rows. Historical archive rows that predate the moderation field remain visible.
+New messages are `published` by default. The model also supports `hidden` plus `hiddenAt`; public reads omit hidden rows. Historical archive rows that predate the moderation field remain visible.
 
-The repository intentionally does not add an admin UI to an archived public project. See `docs/OPERATIONS.md` for the manual moderation baseline and the recommended path if active moderation is ever needed.
+The archive intentionally does not add an admin UI. See `docs/OPERATIONS.md` for the manual moderation baseline and the recommended path if active moderation is ever needed.
 
 ## Testing
 
-Type-check the React frontend:
+Run the complete static type gate for both applications:
 
 ```bash
 npm run typecheck
 ```
 
-Build production bundles:
+Build the production frontend:
 
 ```bash
 npm run build
 ```
 
-Backend/integration suite:
+Run server unit/integration tests with Node's built-in test runner:
 
 ```bash
 npm test
 ```
 
-Browser E2E suite:
+Run the browser E2E suite:
 
 ```bash
 npx playwright install chromium
@@ -158,48 +160,57 @@ Dependabot checks npm dependencies and GitHub Actions weekly. Related packages a
 - Socket.IO server + client
 - Vite / React SWC plugin / TypeScript
 - browser legacy tooling
-- test tooling
+- server type packages
+- integration/E2E test tooling
+- development orchestration tooling
 
 Low-risk patch/minor updates may merge automatically only after the complete CI gate succeeds. Major updates remain manual. `@vitejs/plugin-legacy` is more conservative: only patch updates are eligible for automatic merge because minor releases can change browser-support/runtime details and CSP hashes.
 
 ## Project structure
 
 ```text
-frontend/
-├── index.html
-├── tsconfig.json
-└── src/
-    ├── components/
-    ├── hooks/
-    ├── lib/
-    ├── pages/
-    ├── styles/
-    ├── types/
-    ├── App.tsx
-    └── main.tsx
-public/
-└── assets/img/          Original image assets
-scripts/
-└── verify-frontend-build.mjs
+apps/
+├── web/
+│   ├── package.json
+│   ├── vite.config.ts
+│   ├── tsconfig.json
+│   ├── index.html
+│   ├── public/
+│   │   └── assets/img/
+│   └── src/
+│       ├── app/
+│       ├── features/
+│       │   └── messages/
+│       ├── pages/
+│       ├── shared/
+│       └── styles/
+│
+└── server/
+    ├── package.json
+    ├── tsconfig.json
+    └── src/
+        ├── app.ts
+        ├── server.ts
+        ├── config/
+        ├── http/
+        ├── infrastructure/
+        ├── middleware/
+        ├── modules/
+        │   └── messages/
+        ├── observability/
+        ├── routes/
+        └── types/
+
+tests/
+├── server/
+└── e2e/
+
 docs/
 ├── ARCHITECTURE.md
 └── OPERATIONS.md
-src/
-├── app.js
-├── server.js
-├── config/
-├── controllers/
-├── errors/
-├── http/
-├── middleware/
-├── models/
-├── routes/
-├── services/
-└── utils/
-__tests__/
-├── e2e/
-└── *.test.js
-vite.config.ts
+
+scripts/
+└── verify-frontend-build.mjs
 ```
 
 `dist/` is generated and intentionally not committed.
