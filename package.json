@@ -9,6 +9,12 @@
     "apps/web",
     "apps/server"
   ],
+  "allowScripts": {
+    "@swc/core": true,
+    "core-js": false,
+    "fsevents": false,
+    "mongodb-memory-server": true
+  },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
     "concurrently": "^10.0.5",
@@ -23,12 +29,13 @@
   "scripts": {
     "start": "npm run start --workspace @longlivethepeople/server",
     "dev": "concurrently -k -n server,web \"npm:dev:server\" \"npm:dev:web\"",
-    "dev:server": "cross-env NODE_ENV=development nodemon --watch apps/server/src --ext ts apps/server/src/main.ts",
-    "dev:web": "npm run dev --workspace @longlivethepeople/web",
+    "dev:server": "cross-env NODE_ENV=development nodemon --watch apps/server/src --ext ts --exec node apps/server/src/main.ts",
+    "dev:web": "node ./scripts/wait-for-dev-server.mjs && npm run dev --workspace @longlivethepeople/web",
     "watch:dev": "npm run dev",
     "build": "npm run build --workspace @longlivethepeople/web",
     "typecheck": "npm run typecheck --workspace @longlivethepeople/server && npm run typecheck --workspace @longlivethepeople/web",
     "test": "node --test \"tests/server/**/*.test.mjs\"",
+    "test:dev": "node ./scripts/verify-dev-runtime.mjs",
     "test:e2e": "npm run build && cross-env NODE_ENV=test playwright test",
     "test:e2e:ci": "cross-env NODE_ENV=test playwright test",
     "test:all": "npm run typecheck && npm run build && npm run test && npm run test:e2e:ci"
