@@ -4,14 +4,14 @@ This is an archived project, not a service that requires enterprise infrastructu
 
 ## Deployment contract
 
-Runtime baseline: Node.js 24 LTS.
+Runtime baseline: Node.js 24.
 
 Required in production:
 
 - `NODE_ENV=production`
 - `MONGODB_URI=<managed-or-backed-up-mongodb-uri>`
 
-The React frontend must be built before the production Node process starts:
+The server is TypeScript + ESM and runs directly on Node.js 24 using erasable TypeScript syntax. No server transpilation or runtime TypeScript loader is required. The React frontend must be built before the production Node process starts:
 
 ```bash
 npm ci
@@ -20,7 +20,7 @@ npm run build
 NODE_ENV=production MONGODB_URI='<uri>' npm start
 ```
 
-`npm run build` writes the production application to `dist/client/` and writes the legacy-runtime CSP digests to `dist/legacy-csp.json`. These files are generated deployment artifacts and are intentionally not committed. A deployment must build them from the same locked dependency graph that it runs.
+`npm run typecheck` validates both npm workspaces. `npm run build` writes the production browser application to `dist/client/` and writes the legacy-runtime CSP digests to `dist/legacy-csp.json`. These files are generated deployment artifacts and are intentionally not committed. A deployment must build them from the same locked dependency graph that it runs.
 
 Optional runtime configuration:
 
@@ -41,9 +41,9 @@ Optional runtime configuration:
 
 Do not expose the application directly to the Internet with `TRUST_PROXY` enabled. A client that can bypass the trusted proxy could forge forwarding headers and undermine IP-based controls.
 
-## Frontend build integrity
+## Build integrity
 
-CI type-checks React/TypeScript, creates both modern and legacy Vite bundles, and verifies that the generated CSP manifest matches the installed `@vitejs/plugin-legacy` runtime hashes. The production build should never be edited manually after this validation.
+CI type-checks both the server and React application, creates modern and legacy Vite bundles, and verifies that the generated CSP manifest matches the installed `@vitejs/plugin-legacy` runtime hashes. The production build should never be edited manually after this validation.
 
 The legacy bundle is a compatibility path, not a second application. Both browser paths execute the same React source and use the same REST/Socket.IO backend.
 
@@ -146,7 +146,7 @@ If multiple replicas are genuinely needed, add shared rate-limit storage and a s
 
 ## Dependency maintenance
 
-Dependabot groups dependencies that should move together. Auto-merge remains conditional on the complete CI gate, and major updates stay manual. Browser-compatibility tooling is intentionally more conservative: `@vitejs/plugin-legacy` minor and major updates require review even if CI succeeds.
+Dependabot operates at the npm workspace root so cross-workspace packages can remain aligned. Related React, Socket.IO, Vite/TypeScript, server type, testing, and development-tool dependencies are grouped. Auto-merge remains conditional on the complete CI gate, and major updates stay manual. Browser-compatibility tooling is intentionally more conservative: `@vitejs/plugin-legacy` minor and major updates require review even if CI succeeds.
 
 ## Incident checklist
 

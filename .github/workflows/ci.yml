@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Type-check React frontend
+      - name: Type-check applications
         run: npm run typecheck
 
       - name: Build modern and legacy frontend bundles
