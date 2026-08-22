@@ -2,8 +2,9 @@
   "name": "@longlivethepeople/server",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "Express, MongoDB and Socket.IO runtime for Long Live the People",
-  "main": "src/server.js",
+  "main": "src/server.ts",
   "engines": {
     "node": ">=24.0.0 <25"
   },
@@ -16,7 +17,16 @@
     "serve-favicon": "^2.5.1",
     "socket.io": "^4.8.3"
   },
+  "devDependencies": {
+    "@types/compression": "^1.8.0",
+    "@types/cors": "^2.8.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^24.0.0",
+    "@types/serve-favicon": "^2.5.0",
+    "typescript": "^7.0.2"
+  },
   "scripts": {
-    "start": "node ./src/server.js"
+    "start": "node ./src/server.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   }
 }
