@@ -1,10 +1,13 @@
 # GEMINI.md
 
-## Frontend & Client-Side Directives
+## Web application directives
 
-- **Styling:** Strictly use Vanilla CSS via `public/assets/css/style.css`. No external CSS frameworks (e.g., Tailwind, Bootstrap). Maintain a cohesive visual design consistent with existing assets.
-- **Client-Side Logic:** Keep browser-side JavaScript in `public/assets/js/script.js` minimal and unobtrusive. Ensure compatibility with the rendered EJS views.
-- **Templates:** Use EJS files in the `views/` directory. Maintain clean separation between layouts and partials (e.g., `views/partials/`).
-- **Performance:** Optimize image assets (found in `public/assets/img/`) and minimize CSS/JS load times.
-- **Accessibility:** Ensure semantic HTML usage in EJS templates to maintain accessibility standards.
-- **Consistency:** Use consistent naming conventions and spacing across all UI elements. If introducing new UI patterns, ensure they integrate seamlessly with the existing design system.
+- The React/Vite frontend lives in `apps/web`.
+- Organize code by feature. Message-related API types, client calls, realtime state, form, and feed components belong together in `apps/web/src/features/messages`.
+- Keep route-level composition in `apps/web/src/pages`, application bootstrap/navigation in `apps/web/src/app`, genuinely reusable UI in `apps/web/src/shared`, and global styling in `apps/web/src/styles`.
+- Do not recreate generic `components`, `hooks`, `lib`, or `types` buckets when code belongs to a single feature.
+- Preserve the archived user-facing wording exactly. Do not invent, modernize, soften, or add visible copy unless explicitly requested.
+- Use React + TypeScript and modern CSS. Do not add Redux, Tailwind, React Router, or another frontend framework without a concrete requirement.
+- Keep `socket.io-client` aligned with the server's `socket.io` dependency and preserve realtime deduplication plus the periodic healing refresh.
+- Maintain the configured legacy-browser build and generated CSP hash verification.
+- Keep accessibility semantics and keyboard behavior intact when changing UI structure.
