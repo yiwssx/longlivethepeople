@@ -10,6 +10,8 @@ The application remains a small modular monolith with two npm workspaces:
 
 - `apps/web` — React + TypeScript frontend built by Vite.
 - `apps/server` — TypeScript + ESM Express/MongoDB/Socket.IO server.
+- `apps/server/src/app.ts` — defines the Express HTTP application: middleware, routes, static assets, and HTTP error handling.
+- `apps/server/src/main.ts` — executable process entry point: database connection, HTTP server, Socket.IO lifecycle, listening, signals, and graceful shutdown.
 - one root `package-lock.json` keeps the deployment dependency graph reproducible.
 - Node.js 24 executes the server's erasable TypeScript directly; no runtime transpiler is required.
 - MongoDB is the source of truth for messages.
@@ -190,7 +192,7 @@ apps/
     ├── tsconfig.json
     └── src/
         ├── app.ts
-        ├── server.ts
+        ├── main.ts
         ├── config/
         ├── http/
         ├── infrastructure/
