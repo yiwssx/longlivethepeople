@@ -1,21 +1,25 @@
 name: Sync React frontend dependencies
 
 on:
-  push:
-    branches:
-      - agent/react-vite-frontend
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
 
 permissions:
   contents: write
 
 jobs:
   sync:
-    if: github.actor != 'github-actions[bot]'
+    if: >-
+      github.head_ref == 'agent/react-vite-frontend' &&
+      github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
-      - name: Checkout
+      - name: Checkout React branch
         uses: actions/checkout@v7
         with:
           ref: agent/react-vite-frontend
