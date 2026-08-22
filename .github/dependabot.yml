@@ -11,6 +11,45 @@ updates:
     open-pull-requests-limit: 10
     versioning-strategy: increase
     rebase-strategy: auto
+    groups:
+      react-frontend:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+        update-types:
+          - minor
+          - patch
+      socket-io:
+        patterns:
+          - "socket.io"
+          - "socket.io-client"
+        update-types:
+          - minor
+          - patch
+      vite-toolchain:
+        patterns:
+          - "vite"
+          - "@vitejs/plugin-react"
+          - "typescript"
+        update-types:
+          - minor
+          - patch
+      vite-legacy:
+        patterns:
+          - "@vitejs/plugin-legacy"
+        update-types:
+          - patch
+      test-tooling:
+        patterns:
+          - "jest"
+          - "supertest"
+          - "@playwright/test"
+          - "mongodb-memory-server"
+        update-types:
+          - minor
+          - patch
     commit-message:
       prefix: "deps"
       include: scope
@@ -24,6 +63,10 @@ updates:
       timezone: "Asia/Bangkok"
     open-pull-requests-limit: 5
     rebase-strategy: auto
+    groups:
+      github-actions:
+        patterns:
+          - "*"
     commit-message:
       prefix: "ci"
       include: scope
