@@ -44,9 +44,18 @@ updates:
           - "@vitejs/plugin-legacy"
         update-types:
           - patch
+      server-types:
+        patterns:
+          - "@types/compression"
+          - "@types/cors"
+          - "@types/express"
+          - "@types/node"
+          - "@types/serve-favicon"
+        update-types:
+          - minor
+          - patch
       test-tooling:
         patterns:
-          - "jest"
           - "supertest"
           - "@playwright/test"
           - "mongodb-memory-server"
