@@ -70,6 +70,12 @@ updates:
         update-types:
           - minor
           - patch
+    # Keep Node typings aligned with the Node 24 production/runtime baseline.
+    # A Node major upgrade must be planned together with deployment compatibility.
+    ignore:
+      - dependency-name: "@types/node"
+        update-types:
+          - "version-update:semver-major"
     commit-message:
       prefix: "deps"
       include: scope
