@@ -10,10 +10,10 @@
     "apps/server"
   ],
   "allowScripts": {
-    "@swc/core": true,
+    "@swc/core@1.16.1": true,
     "core-js": false,
     "fsevents": false,
-    "mongodb-memory-server": true
+    "mongodb-memory-server@11.2.0": true
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
