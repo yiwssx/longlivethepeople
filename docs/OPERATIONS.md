@@ -22,6 +22,8 @@ NODE_ENV=production MONGODB_URI='<uri>' npm start
 
 `npm run typecheck` validates both npm workspaces. `npm run build` writes the production browser application to `dist/client/` and writes the legacy-runtime CSP digests to `dist/legacy-csp.json`. These files are generated deployment artifacts and are intentionally not committed. A deployment must build them from the same locked dependency graph that it runs.
 
+The root install policy uses `allowScripts` plus `.npmrc` `strict-allow-scripts=true`. If a dependency introduces a new install-time lifecycle script, `npm ci` must fail until that script is explicitly reviewed and approved or denied.
+
 Optional runtime configuration:
 
 - `PORT` — default `3000`
@@ -43,9 +45,9 @@ Do not expose the application directly to the Internet with `TRUST_PROXY` enable
 
 ## Build integrity
 
-CI type-checks both the server and React application, creates modern and legacy Vite bundles, and verifies that the generated CSP manifest matches the installed `@vitejs/plugin-legacy` runtime hashes. The production build should never be edited manually after this validation.
+CI installs Chromium and then runs the canonical `npm run verify:all` contract. That contract type-checks both applications, creates modern and legacy Vite bundles, validates the generated CSP manifest, runs server/integration tests, exercises the real development runtime through Vite and Socket.IO, runs browser E2E coverage, and fails on high-severity npm audit findings.
 
-The legacy bundle is a compatibility path, not a second application. Both browser paths execute the same React source and use the same REST/Socket.IO backend.
+The production build should never be edited manually after validation. The legacy bundle is a compatibility path, not a second application. Both browser paths execute the same React source and use the same REST/Socket.IO backend.
 
 ## Health checks
 
@@ -146,7 +148,13 @@ If multiple replicas are genuinely needed, add shared rate-limit storage and a s
 
 ## Dependency maintenance
 
-Dependabot operates at the npm workspace root so cross-workspace packages can remain aligned. Related React, Socket.IO, Vite/TypeScript, server type, testing, and development-tool dependencies are grouped. Auto-merge remains conditional on the complete CI gate, and major updates stay manual. Browser-compatibility tooling is intentionally more conservative: `@vitejs/plugin-legacy` minor and major updates require review even if CI succeeds.
+Scheduled Dependabot maintenance is npm-only and restricted to dependencies explicitly declared in repository `package.json` files. Direct React, Socket.IO, Vite/TypeScript, server type, testing, and development-tool packages are grouped where coordinated versions reduce skew.
+
+A direct dependency upgrade may cause npm to select different transitive versions in the shared `package-lock.json`; that is an expected consequence of updating the parent package. Automation must not independently target an indirect/transitive package merely because it appears in the lockfile.
+
+Automatic merge is available only for patch/minor Dependabot PRs classified by Dependabot metadata as `direct:production` or `direct:development`, with at least one `package.json` change and no changed files outside `package.json` files and the root `package-lock.json`. The complete CI gate must pass. Major updates stay manual. Browser-compatibility tooling is intentionally more conservative: `@vitejs/plugin-legacy` minor and major updates require review even if CI succeeds.
+
+GitHub Actions versions are maintained manually rather than by scheduled Dependabot updates. Indirect security alerts may still be reported by GitHub, but they require explicit review and are not eligible for the direct-dependency auto-merge path.
 
 ## Incident checklist
 
