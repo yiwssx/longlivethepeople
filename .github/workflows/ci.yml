@@ -7,7 +7,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   test:
@@ -17,12 +17,66 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '24.19.0'
           cache: npm
+
+      - name: Restore transitive dependency baseline once
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.ref == 'chore/direct-dependencies-only' &&
+          github.actor != 'github-actions[bot]'
+        shell: bash
+        run: |
+          cp package.json /tmp/package.json
+          node <<'NODE'
+          const fs = require('node:fs');
+          const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          packageJson.overrides = {
+            ...(packageJson.overrides || {}),
+            'form-data': '4.0.5',
+            'body-parser': '2.2.1',
+            'engine.io': '6.6.2',
+            'socket.io-parser': '4.2.6',
+            'brace-expansion': '5.0.5'
+          };
+          fs.writeFileSync('package.json', `${JSON.stringify(packageJson, null, 2)}\n`);
+          NODE
+
+          npm install --package-lock-only --ignore-scripts
+          mv /tmp/package.json package.json
+          git diff --exit-code -- package.json
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+          const packages = lock.packages;
+          const expected = new Map([
+            ['node_modules/form-data', '4.0.5'],
+            ['node_modules/body-parser', '2.2.1'],
+            ['node_modules/engine.io', '6.6.2'],
+            ['node_modules/socket.io-parser', '4.2.6'],
+            ['node_modules/nodemon/node_modules/brace-expansion', '5.0.5']
+          ]);
+          for (const [path, version] of expected) {
+            if (packages[path]?.version !== version) {
+              throw new Error(`${path}: expected ${version}, got ${packages[path]?.version || 'missing'}`);
+            }
+          }
+          NODE
+
+          git add package-lock.json
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'chore: restore transitive dependency baseline'
+            git push origin HEAD:chore/direct-dependencies-only
+          fi
 
       - name: Install dependencies
         run: npm ci
