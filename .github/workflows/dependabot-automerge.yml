@@ -37,6 +37,7 @@ jobs:
         uses: actions/github-script@v8
         env:
           UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+          DEPENDENCY_TYPE: ${{ steps.metadata.outputs.dependency-type }}
           DEPENDENCY_NAMES: ${{ steps.metadata.outputs.dependency-names }}
         with:
           script: |
@@ -45,11 +46,13 @@ jobs:
             const issue_number = context.issue.number;
             const label = 'dependencies-automerge';
             const updateType = process.env.UPDATE_TYPE || '';
+            const dependencyType = process.env.DEPENDENCY_TYPE || '';
             const dependencyNames = process.env.DEPENDENCY_NAMES || '';
             const safeTypes = new Set([
               'version-update:semver-patch',
               'version-update:semver-minor',
             ]);
+            const isDirectDependency = dependencyType.startsWith('direct');
 
             const changedFiles = await github.paginate(github.rest.pulls.listFiles, {
               owner,
@@ -71,6 +74,7 @@ jobs:
             const legacyPluginMinor = dependencyNames.includes('@vitejs/plugin-legacy')
               && updateType === 'version-update:semver-minor';
             const isSafeUpdate = safeTypes.has(updateType)
+              && isDirectDependency
               && !legacyPluginMinor
               && hasPackageManifest
               && onlyPackageFiles;
@@ -111,7 +115,7 @@ jobs:
             }
 
             core.notice(
-              `Leaving update for manual review: type=${updateType || 'unknown'}, manifests=${hasPackageManifest}, packageFilesOnly=${onlyPackageFiles}.`,
+              `Leaving update for manual review: updateType=${updateType || 'unknown'}, dependencyType=${dependencyType || 'unknown'}, manifests=${hasPackageManifest}, packageFilesOnly=${onlyPackageFiles}.`,
             );
 
   merge:
