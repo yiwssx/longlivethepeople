@@ -1,9 +1,6 @@
 version: 2
 
 updates:
-  # npm workspaces share one root lockfile. Dependabot may update only packages
-  # explicitly declared in a package.json. Transitive dependency versions are
-  # owned by their direct parent packages and must not be targeted independently.
   - package-ecosystem: npm
     directory: "/"
     schedule:
@@ -18,62 +15,26 @@ updates:
       - dependency-type: direct
     groups:
       react-frontend:
-        patterns:
-          - "react"
-          - "react-dom"
-          - "@types/react"
-          - "@types/react-dom"
-        update-types:
-          - minor
-          - patch
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
+        update-types: [minor, patch]
       socket-io:
-        patterns:
-          - "socket.io"
-          - "socket.io-client"
-        update-types:
-          - minor
-          - patch
+        patterns: ["socket.io", "socket.io-client"]
+        update-types: [minor, patch]
       vite-toolchain:
-        patterns:
-          - "vite"
-          - "@vitejs/plugin-react-swc"
-          - "typescript"
-        update-types:
-          - minor
-          - patch
+        patterns: ["vite", "@vitejs/plugin-react-swc", "typescript"]
+        update-types: [minor, patch]
       vite-legacy:
-        patterns:
-          - "@vitejs/plugin-legacy"
-        update-types:
-          - patch
+        patterns: ["@vitejs/plugin-legacy"]
+        update-types: [patch]
       server-types:
-        patterns:
-          - "@types/compression"
-          - "@types/cors"
-          - "@types/express"
-          - "@types/node"
-          - "@types/serve-favicon"
-        update-types:
-          - minor
-          - patch
+        patterns: ["@types/compression", "@types/cors", "@types/express", "@types/node", "@types/serve-favicon"]
+        update-types: [minor, patch]
       test-tooling:
-        patterns:
-          - "supertest"
-          - "@playwright/test"
-          - "mongodb-memory-server"
-        update-types:
-          - minor
-          - patch
+        patterns: ["supertest", "@playwright/test", "mongodb-memory-server"]
+        update-types: [minor, patch]
       dev-orchestration:
-        patterns:
-          - "concurrently"
-          - "cross-env"
-          - "nodemon"
-        update-types:
-          - minor
-          - patch
-    # Keep Node typings aligned with the Node 24 production/runtime baseline.
-    # A Node major upgrade must be planned together with deployment compatibility.
+        patterns: ["concurrently", "cross-env", "nodemon"]
+        update-types: [minor, patch]
     ignore:
       - dependency-name: "@types/node"
         update-types:
