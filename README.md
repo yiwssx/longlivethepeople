@@ -27,7 +27,7 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for design rationale and [`do
 - npm 11+
 - MongoDB for local/deployed runtime
 
-Automated tests use `mongodb-memory-server`, so a separate MongoDB instance is not required for CI.
+Automated tests use `mongodb-memory-server`, so a separate MongoDB instance is not required for CI. Project install-script approvals are enforced by the root `allowScripts` policy together with `.npmrc` `strict-allow-scripts=true`; new install scripts require an explicit review instead of being silently accepted.
 
 ## Development
 
@@ -125,38 +125,39 @@ New messages are `published` by default. The model also supports `hidden` plus `
 
 The archive intentionally does not add an admin UI. See `docs/OPERATIONS.md` for the manual moderation baseline and the recommended path if active moderation is ever needed.
 
-## Testing
+## Testing and verification
 
-Run the complete static type gate for both applications:
-
-```bash
-npm run typecheck
-```
-
-Build the production frontend:
-
-```bash
-npm run build
-```
-
-Run server unit/integration tests with Node's built-in test runner:
-
-```bash
-npm test
-```
-
-Run the browser E2E suite:
+Install Chromium once before running browser-backed verification:
 
 ```bash
 npx playwright install chromium
-npm run test:e2e
 ```
 
-The E2E suite covers the landing flow, message publishing, Socket.IO delivery between two browser pages, incremental cursor history, and a mobile viewport.
+Run individual gates when diagnosing a failure:
+
+```bash
+npm run typecheck
+npm run build
+npm run verify:frontend
+npm test
+npm run test:dev
+npm run test:e2e:ci
+npm run audit:high
+```
+
+Run the same complete verification contract used by CI:
+
+```bash
+npm run verify:all
+```
+
+`npm run test:all` is retained as a compatibility alias for `npm run verify:all`. The browser coverage includes the landing flow, message publishing, Socket.IO delivery between two pages, incremental cursor history, a mobile viewport, and a development-runtime smoke test through the Vite proxy.
 
 ## Automated dependency maintenance
 
-Dependabot checks npm dependencies and GitHub Actions weekly. Related packages are grouped to reduce version skew:
+Dependabot performs weekly **npm-only** version maintenance at the workspace root. Automation is restricted to dependencies explicitly declared in this repository's `package.json` files; transitive dependencies remain owned by their direct parent packages and are not independently version-bumped by scheduled maintenance.
+
+Related direct dependencies are grouped to reduce version skew:
 
 - React / ReactDOM / React types
 - Socket.IO server + client
@@ -166,7 +167,11 @@ Dependabot checks npm dependencies and GitHub Actions weekly. Related packages a
 - integration/E2E test tooling
 - development orchestration tooling
 
-Low-risk patch/minor updates may merge automatically only after the complete CI gate succeeds. Major updates remain manual. `@vitejs/plugin-legacy` is more conservative: only patch updates are eligible for automatic merge because minor releases can change browser-support/runtime details and CSP hashes.
+A direct dependency update may legitimately change transitive entries in the root `package-lock.json` because the selected parent package resolves a different dependency graph. That is different from independently targeting the transitive package itself.
+
+Automatic merge is limited to Dependabot patch/minor PRs whose metadata identifies the update as a direct dependency and whose changed files are only `package.json` files plus the root `package-lock.json`. The complete CI verification gate must pass first. Major updates remain manual. `@vitejs/plugin-legacy` is more conservative: only patch updates are eligible for automatic merge because minor releases can change browser-support/runtime details and CSP hashes.
+
+GitHub Actions versions are maintained manually rather than by scheduled Dependabot updates. Indirect/transitive security alerts may still be surfaced by GitHub, but they are not eligible for this direct-dependency auto-merge path and require explicit review.
 
 ## Project structure
 
