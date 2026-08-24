@@ -1,9 +1,8 @@
 version: 2
 
 updates:
-  # npm workspaces share one root lockfile. Keep discovery at the repository root
-  # so dependencies that span workspaces (notably Socket.IO client/server) can be
-  # upgraded and verified together in a single PR.
+  # Only dependencies explicitly declared in package.json files are maintained.
+  # Transitive dependencies remain owned by their direct parent packages.
   - package-ecosystem: npm
     directory: "/"
     schedule:
@@ -14,6 +13,8 @@ updates:
     open-pull-requests-limit: 10
     versioning-strategy: increase
     rebase-strategy: auto
+    allow:
+      - dependency-type: direct
     groups:
       react-frontend:
         patterns:
@@ -70,29 +71,10 @@ updates:
         update-types:
           - minor
           - patch
-    # Keep Node typings aligned with the Node 24 production/runtime baseline.
-    # A Node major upgrade must be planned together with deployment compatibility.
     ignore:
       - dependency-name: "@types/node"
         update-types:
           - "version-update:semver-major"
     commit-message:
       prefix: "deps"
-      include: scope
-
-  - package-ecosystem: github-actions
-    directory: "/"
-    schedule:
-      interval: weekly
-      day: monday
-      time: "03:15"
-      timezone: "Asia/Bangkok"
-    open-pull-requests-limit: 5
-    rebase-strategy: auto
-    groups:
-      github-actions:
-        patterns:
-          - "*"
-    commit-message:
-      prefix: "ci"
       include: scope
