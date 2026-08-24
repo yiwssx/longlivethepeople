@@ -1,9 +1,9 @@
 version: 2
 
 updates:
-  # npm workspaces share one root lockfile. Keep discovery at the repository root
-  # so dependencies that span workspaces (notably Socket.IO client/server) can be
-  # upgraded and verified together in a single PR.
+  # npm workspaces share one root lockfile. Dependabot may update only packages
+  # explicitly declared in a package.json. Transitive dependency versions are
+  # owned by their direct parent packages and must not be targeted independently.
   - package-ecosystem: npm
     directory: "/"
     schedule:
@@ -14,6 +14,8 @@ updates:
     open-pull-requests-limit: 10
     versioning-strategy: increase
     rebase-strategy: auto
+    allow:
+      - dependency-type: direct
     groups:
       react-frontend:
         patterns:
@@ -78,21 +80,4 @@ updates:
           - "version-update:semver-major"
     commit-message:
       prefix: "deps"
-      include: scope
-
-  - package-ecosystem: github-actions
-    directory: "/"
-    schedule:
-      interval: weekly
-      day: monday
-      time: "03:15"
-      timezone: "Asia/Bangkok"
-    open-pull-requests-limit: 5
-    rebase-strategy: auto
-    groups:
-      github-actions:
-        patterns:
-          - "*"
-    commit-message:
-      prefix: "ci"
       include: scope
