@@ -151,6 +151,7 @@ Shutdown on `SIGTERM`/`SIGINT` closes realtime connections, HTTP serving, and Mo
 - React escapes message strings during rendering; user message content is not interpreted as HTML.
 - Legacy inline runtime code is allowed only by generated SHA-256 CSP hashes rather than `unsafe-inline`.
 - Runtime metrics require a bearer token and are otherwise disabled.
+- npm install scripts are governed by explicit root `allowScripts` approvals and `.npmrc` strict enforcement.
 
 CORS is not an anti-CSRF or anti-abuse control. Internet-facing deployments should also apply edge/WAF rate limiting as documented in `OPERATIONS.md`.
 
@@ -162,19 +163,29 @@ If private access is ever required, add real authentication/authorization rather
 
 ## Testing strategy
 
-CI validates the frontend and backend as one deployment unit:
+The canonical verification contract is `npm run verify:all`. CI installs Chromium and then runs that contract so local and CI verification do not maintain separate command lists.
 
-1. `npm ci`;
-2. `tsc --noEmit` for the server and web application;
-3. Vite modern + legacy production build;
-4. generated frontend/CSP verification;
-5. Node `node:test` + Supertest + MongoMemoryServer server/integration tests;
-6. Playwright + Chromium browser tests, including Socket.IO delivery between two pages and cursor history loading;
+The gate validates the frontend and backend as one deployment unit:
+
+1. TypeScript static checks for server and web;
+2. Vite modern + legacy production build;
+3. generated frontend/CSP verification;
+4. Node `node:test` + Supertest + MongoMemoryServer server/integration tests;
+5. a real development-runtime smoke test through Express, Vite proxying, MongoDB, Chromium, and Socket.IO;
+6. Playwright browser E2E coverage including realtime delivery and cursor history loading;
 7. `npm audit --audit-level=high`.
+
+`npm run test:all` remains a compatibility alias for the same complete gate.
 
 ## Dependency maintenance
 
-Dependabot runs at the npm workspace root so packages that span applications can still move together. It groups React packages, Socket.IO server/client, the Vite/TypeScript toolchain, server type packages, test tooling, and development orchestration dependencies. Patch/minor updates can be automatically merged only after the full CI gate passes. Major updates remain manual. `@vitejs/plugin-legacy` minor/major changes are also manual because they may change browser compatibility and inline runtime behavior.
+Dependabot performs scheduled npm version maintenance from the workspace root, but only for dependencies explicitly declared in repository `package.json` files. Indirect/transitive dependencies remain owned by their direct parent package and are not independently targeted by scheduled version updates.
+
+Direct React packages, Socket.IO server/client, Vite/TypeScript tooling, server type packages, test tooling, and development orchestration dependencies are grouped where version alignment is useful. A direct package upgrade may naturally change transitive resolutions in the shared `package-lock.json`; those lockfile changes are accepted only as consequences of the selected direct parent update.
+
+Patch/minor auto-merge requires all of the following: Dependabot metadata must classify the update as `direct:production` or `direct:development`; the PR must change at least one `package.json`; changed files must be limited to `package.json` files and the root `package-lock.json`; and the complete CI gate must pass. Major updates remain manual. `@vitejs/plugin-legacy` minor/major changes also remain manual because they may change browser compatibility and inline runtime behavior.
+
+Scheduled GitHub Actions updates are intentionally disabled because Actions are not dependencies declared in this project's `package.json` files. Indirect security alerts can still be surfaced by GitHub, but they do not enter the direct-dependency auto-merge path and require explicit review.
 
 ## Scaling path (not required for the archive)
 
