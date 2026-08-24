@@ -33,7 +33,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Mark verified low-risk updates for automatic merge
+      - name: Mark verified direct dependency updates for automatic merge
         uses: actions/github-script@v8
         env:
           UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
@@ -51,13 +51,29 @@ jobs:
               'version-update:semver-minor',
             ]);
 
+            const changedFiles = await github.paginate(github.rest.pulls.listFiles, {
+              owner,
+              repo,
+              pull_number: issue_number,
+              per_page: 100,
+            });
+            const filenames = changedFiles.map((file) => file.filename);
+            const isPackageManifest = (filename) => filename === 'package.json' || filename.endsWith('/package.json');
+            const hasPackageManifest = filenames.some(isPackageManifest);
+            const onlyPackageFiles = filenames.every(
+              (filename) => isPackageManifest(filename) || filename === 'package-lock.json',
+            );
+
             // @vitejs/plugin-legacy embeds fixed inline runtime snippets. Patch
             // releases can merge automatically because CI verifies generated CSP
             // hashes. Minor releases remain manual so browser-support changes get
             // an explicit review even when the build is green.
             const legacyPluginMinor = dependencyNames.includes('@vitejs/plugin-legacy')
               && updateType === 'version-update:semver-minor';
-            const isSafeUpdate = safeTypes.has(updateType) && !legacyPluginMinor;
+            const isSafeUpdate = safeTypes.has(updateType)
+              && !legacyPluginMinor
+              && hasPackageManifest
+              && onlyPackageFiles;
 
             if (isSafeUpdate) {
               try {
@@ -69,7 +85,7 @@ jobs:
                   repo,
                   name: label,
                   color: '0E8A16',
-                  description: 'Auto-merge verified low-risk Dependabot updates after CI passes',
+                  description: 'Auto-merge verified direct package.json dependency updates after CI passes',
                 });
               }
 
@@ -79,7 +95,7 @@ jobs:
                 issue_number,
                 labels: [label],
               });
-              core.notice(`Marked ${updateType} for auto-merge after CI.`);
+              core.notice(`Marked direct ${updateType} dependency update for auto-merge after CI.`);
               return;
             }
 
@@ -94,7 +110,9 @@ jobs:
               if (error.status !== 404) throw error;
             }
 
-            core.notice(`Leaving ${updateType || 'unknown update type'} for manual review.`);
+            core.notice(
+              `Leaving update for manual review: type=${updateType || 'unknown'}, manifests=${hasPackageManifest}, packageFilesOnly=${onlyPackageFiles}.`,
+            );
 
   merge:
     name: Merge verified Dependabot update
@@ -106,7 +124,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Merge only a verified Dependabot PR
+      - name: Merge only a verified direct dependency PR
         uses: actions/github-script@v8
         with:
           script: |
@@ -135,6 +153,24 @@ jobs:
               return;
             }
 
+            const changedFiles = await github.paginate(github.rest.pulls.listFiles, {
+              owner,
+              repo,
+              pull_number: prNumber,
+              per_page: 100,
+            });
+            const filenames = changedFiles.map((file) => file.filename);
+            const isPackageManifest = (filename) => filename === 'package.json' || filename.endsWith('/package.json');
+            const hasPackageManifest = filenames.some(isPackageManifest);
+            const onlyPackageFiles = filenames.every(
+              (filename) => isPackageManifest(filename) || filename === 'package-lock.json',
+            );
+
+            if (!hasPackageManifest || !onlyPackageFiles) {
+              core.notice(`PR #${prNumber} no longer satisfies the direct package.json dependency file policy.`);
+              return;
+            }
+
             const result = await github.rest.pulls.merge({
               owner,
               repo,
@@ -149,4 +185,4 @@ jobs:
               return;
             }
 
-            core.notice(`Merged Dependabot PR #${prNumber} after CI passed.`);
+            core.notice(`Merged verified direct dependency PR #${prNumber} after CI passed.`);
