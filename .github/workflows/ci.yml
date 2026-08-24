@@ -27,26 +27,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Type-check applications
-        run: npm run typecheck
-
-      - name: Build modern and legacy frontend bundles
-        run: npm run build
-
-      - name: Verify frontend build and CSP hashes
-        run: node ./scripts/verify-frontend-build.mjs
-
-      - name: Run backend tests
-        run: npm test
-
       - name: Install Chromium
         run: npx playwright install chromium
 
-      - name: Verify development runtime
-        run: npm run test:dev
-
-      - name: Run browser E2E tests
-        run: npm run test:e2e:ci
-
-      - name: Audit high-severity vulnerabilities
-        run: npm audit --audit-level=high
+      - name: Run complete verification gate
+        run: npm run verify:all
