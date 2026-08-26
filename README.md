@@ -2,6 +2,9 @@
 
 An archived university-era memorial web application built with Node.js, Express, React, TypeScript, Vite, MongoDB, and Socket.IO.
 
+> [!IMPORTANT]
+> **Proprietary software — All Rights Reserved.** This repository is public for hosting and archival access only. It is not open source. No permission is granted to use, copy, modify, redistribute, sublicense, sell, relicense, or create derivative works from this project without prior explicit written authorization. See [`LICENSE`](LICENSE).
+
 This repository is preserved as an **archive project**. The original implementation was completed under a tight deadline after university. React was the intended frontend direction, but the available time favored EJS and vanilla JavaScript. The later restoration keeps the original purpose, wording, imagery, database compatibility, and public behavior while completing the intended React frontend and reorganizing the codebase around clearer application and feature boundaries.
 
 ## Architecture
