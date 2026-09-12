@@ -1,13 +1,13 @@
 version: 2
 
 updates:
-  # Only dependencies explicitly declared in package.json files are maintained.
-  # Transitive dependencies remain owned by their direct parent packages.
+  # Scheduled npm version updates target dependencies explicitly declared in
+  # package.json. Lockfile-only Dependabot PRs (for example security or
+  # compatible resolution updates) are handled by the auto-merge workflow.
   - package-ecosystem: npm
     directory: "/"
     schedule:
-      interval: weekly
-      day: monday
+      interval: daily
       time: "03:00"
       timezone: "Asia/Bangkok"
     open-pull-requests-limit: 10
