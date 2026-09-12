@@ -33,7 +33,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Mark verified direct dependency updates for automatic merge
+      - name: Mark verified dependency updates for automatic merge
         uses: actions/github-script@v8
         env:
           UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
@@ -53,6 +53,7 @@ jobs:
               'version-update:semver-minor',
             ]);
             const isDirectDependency = dependencyType.startsWith('direct');
+            const isIndirectDependency = dependencyType === 'indirect';
 
             const changedFiles = await github.paginate(github.rest.pulls.listFiles, {
               owner,
@@ -62,10 +63,15 @@ jobs:
             });
             const filenames = changedFiles.map((file) => file.filename);
             const isPackageManifest = (filename) => filename === 'package.json' || filename.endsWith('/package.json');
+            const isPackageLock = (filename) => filename === 'package-lock.json';
             const hasPackageManifest = filenames.some(isPackageManifest);
-            const onlyPackageFiles = filenames.every(
-              (filename) => isPackageManifest(filename) || filename === 'package-lock.json',
+            const hasPackageLock = filenames.some(isPackageLock);
+            const onlyPackageFiles = filenames.length > 0 && filenames.every(
+              (filename) => isPackageManifest(filename) || isPackageLock(filename),
             );
+            const isLockfileOnly = hasPackageLock
+              && !hasPackageManifest
+              && filenames.every(isPackageLock);
 
             // @vitejs/plugin-legacy embeds fixed inline runtime snippets. Patch
             // releases can merge automatically because CI verifies generated CSP
@@ -73,11 +79,14 @@ jobs:
             // an explicit review even when the build is green.
             const legacyPluginMinor = dependencyNames.includes('@vitejs/plugin-legacy')
               && updateType === 'version-update:semver-minor';
+
+            // Direct patch/minor updates may change package.json, package-lock.json,
+            // or both. Indirect updates are accepted only when they are lockfile-only.
+            const directSafe = isDirectDependency && onlyPackageFiles;
+            const indirectLockfileSafe = isIndirectDependency && isLockfileOnly;
             const isSafeUpdate = safeTypes.has(updateType)
-              && isDirectDependency
               && !legacyPluginMinor
-              && hasPackageManifest
-              && onlyPackageFiles;
+              && (directSafe || indirectLockfileSafe);
 
             if (isSafeUpdate) {
               try {
@@ -89,7 +98,7 @@ jobs:
                   repo,
                   name: label,
                   color: '0E8A16',
-                  description: 'Auto-merge verified direct package.json dependency updates after CI passes',
+                  description: 'Auto-merge verified Dependabot patch/minor package updates after CI passes',
                 });
               }
 
@@ -99,7 +108,9 @@ jobs:
                 issue_number,
                 labels: [label],
               });
-              core.notice(`Marked direct ${updateType} dependency update for auto-merge after CI.`);
+              core.notice(
+                `Marked ${dependencyType || 'unknown'} ${updateType} dependency update for auto-merge after CI.`,
+              );
               return;
             }
 
@@ -115,7 +126,7 @@ jobs:
             }
 
             core.notice(
-              `Leaving update for manual review: updateType=${updateType || 'unknown'}, dependencyType=${dependencyType || 'unknown'}, manifests=${hasPackageManifest}, packageFilesOnly=${onlyPackageFiles}.`,
+              `Leaving update for manual review: updateType=${updateType || 'unknown'}, dependencyType=${dependencyType || 'unknown'}, manifests=${hasPackageManifest}, lockfileOnly=${isLockfileOnly}, packageFilesOnly=${onlyPackageFiles}.`,
             );
 
   merge:
@@ -128,7 +139,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Merge only a verified direct dependency PR
+      - name: Merge only a verified Dependabot dependency PR
         uses: actions/github-script@v8
         with:
           script: |
@@ -165,13 +176,15 @@ jobs:
             });
             const filenames = changedFiles.map((file) => file.filename);
             const isPackageManifest = (filename) => filename === 'package.json' || filename.endsWith('/package.json');
+            const isPackageLock = (filename) => filename === 'package-lock.json';
             const hasPackageManifest = filenames.some(isPackageManifest);
-            const onlyPackageFiles = filenames.every(
-              (filename) => isPackageManifest(filename) || filename === 'package-lock.json',
+            const hasPackageLock = filenames.some(isPackageLock);
+            const onlyPackageFiles = filenames.length > 0 && filenames.every(
+              (filename) => isPackageManifest(filename) || isPackageLock(filename),
             );
 
-            if (!hasPackageManifest || !onlyPackageFiles) {
-              core.notice(`PR #${prNumber} no longer satisfies the direct package.json dependency file policy.`);
+            if (!onlyPackageFiles || (!hasPackageManifest && !hasPackageLock)) {
+              core.notice(`PR #${prNumber} no longer satisfies the dependency file policy.`);
               return;
             }
 
@@ -189,4 +202,4 @@ jobs:
               return;
             }
 
-            core.notice(`Merged verified direct dependency PR #${prNumber} after CI passed.`);
+            core.notice(`Merged verified Dependabot dependency PR #${prNumber} after CI passed.`);
