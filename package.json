@@ -16,7 +16,7 @@
     "mongodb-memory-server@11.2.0": true
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1",
+    "@playwright/test": "^1.63.0",
     "concurrently": "^10.0.5",
     "cross-env": "^10.1.0",
     "mongodb-memory-server": "^11.2.0",
