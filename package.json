@@ -13,7 +13,7 @@
     "@swc/core@1.16.1": true,
     "core-js": false,
     "fsevents": false,
-    "mongodb-memory-server@11.2.0": true
+    "mongodb-memory-server@11.3.0": true
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
