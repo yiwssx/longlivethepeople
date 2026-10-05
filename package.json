@@ -35,7 +35,7 @@
     "build": "npm run build --workspace @longlivethepeople/web",
     "typecheck": "npm run typecheck --workspace @longlivethepeople/server && npm run typecheck --workspace @longlivethepeople/web",
     "verify:frontend": "node ./scripts/verify-frontend-build.mjs",
-    "audit:high": "npm audit --audit-level=high",
+    "audit:high": "npm audit --omit=dev --audit-level=high",
     "test": "node --test \"tests/server/**/*.test.mjs\"",
     "test:dev": "node ./scripts/verify-dev-runtime.mjs",
     "test:e2e": "npm run build && cross-env NODE_ENV=test playwright test",
