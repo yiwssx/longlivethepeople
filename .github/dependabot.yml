@@ -67,7 +67,6 @@ updates:
         patterns:
           - "concurrently"
           - "cross-env"
-          - "nodemon"
         update-types:
           - minor
           - patch

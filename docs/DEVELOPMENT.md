@@ -7,7 +7,7 @@ The root development command runs two long-lived processes:
 1. the Node/Express server on `127.0.0.1:3000`;
 2. the Vite development server on `127.0.0.1:5173`.
 
-The server connects to MongoDB before it begins listening. Nodemon is explicitly configured to execute `node apps/server/src/main.ts`; Node.js 24 runs the erasable TypeScript directly, so the development runtime does not require `ts-node` or `tsx`.
+The server connects to MongoDB before it begins listening. The root development script runs `node --watch apps/server/src/main.ts`. Node.js 24 runs the erasable TypeScript directly and restarts on changes to imported server modules, so no separate file watcher, `ts-node`, or `tsx` is required.
 
 The Vite process waits for `GET /readyz` to return successfully before it starts, so browser/API/Socket.IO proxy traffic is not sent to a backend that is still starting.
 
@@ -29,13 +29,13 @@ The browser uses `socket.io-client`. During development, React StrictMode intent
 
 The message feature avoids that race by owning one Socket.IO client in `apps/web/src/features/messages/socket.ts`. React Effects subscribe and unsubscribe listeners, while the shared connection uses reference counting and a deferred final disconnect. A StrictMode probe can immediately reacquire the same connection instead of aborting it mid-handshake.
 
-Socket.IO automatically reconnects after a genuine temporary disconnect. Editing backend files causes nodemon to restart Express; a short disconnect/reconnect at that moment is expected. Repeated connection failures while the backend is otherwise idle are not expected.
+Socket.IO automatically reconnects after a genuine temporary disconnect. Editing imported backend files causes Node.js watch mode to restart Express; a short disconnect/reconnect at that moment is expected. Repeated connection failures while the backend is otherwise idle are not expected.
 
 ## Interpreting common development errors
 
 ### `ts-node: not found`
 
-Nodemon can infer `ts-node` when it sees a TypeScript entry file. This project intentionally does not use `ts-node`; the root development script overrides nodemon's executor with Node.js itself. Seeing this error means the development script has been changed or nodemon is being invoked directly without the repository script.
+This project intentionally uses neither `ts-node` nor nodemon. A legacy or global watcher may try to invoke `ts-node` for TypeScript files. Use `npm run dev:server`, which runs Node.js 24 with its built-in `--watch` option.
 
 ### `ECONNREFUSED 127.0.0.1:27017`
 
